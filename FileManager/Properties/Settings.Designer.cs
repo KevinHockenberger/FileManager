@@ -58,5 +58,41 @@ namespace FileManager.Properties {
                 this["LastWindowRect"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string LastSource {
+            get {
+                return ((string)(this["LastSource"]));
+            }
+            set {
+                this["LastSource"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string LastDestination {
+            get {
+                return ((string)(this["LastDestination"]));
+            }
+            set {
+                this["LastDestination"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string LastLogFile {
+            get {
+                return ((string)(this["LastLogFile"]));
+            }
+            set {
+                this["LastLogFile"] = value;
+            }
+        }
     }
 }

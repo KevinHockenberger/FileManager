@@ -1,17 +1,8 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
+using System.Windows.Forms;
 using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
+using System.Windows.Input;
 using settings = FileManager.Properties.Settings;
 
 namespace FileManager
@@ -31,7 +22,7 @@ namespace FileManager
       }
       catch (Exception ex)
       {
-        MessageBox.Show(ex.Message, "Fatal Error",  MessageBoxButton.OK,MessageBoxImage.Error);
+        System.Windows.MessageBox.Show(ex.Message, "Fatal Error",  MessageBoxButton.OK,MessageBoxImage.Error);
         throw;
       }
     }
@@ -110,11 +101,17 @@ namespace FileManager
       Height = settings.Default.LastWindowRect.Height;
       Top = settings.Default.LastWindowRect.Top;
       Left = settings.Default.LastWindowRect.Left;
+      txtSource.Text = settings.Default.LastSource;
+      txtDestination.Text = settings.Default.LastDestination;
+      txtLog.Text = settings.Default.LastLogFile;
     }
     private void SaveSettings()
     {
       settings.Default.LastWindowState = this.WindowState;
       settings.Default.LastWindowRect = this.RestoreBounds;
+      settings.Default.LastSource = txtSource.Text;
+      settings.Default.LastDestination = txtDestination.Text;
+      settings.Default.LastLogFile = txtLog.Text;
       settings.Default.Save();
     }
     private void Window_Initialized(object sender, EventArgs e)
@@ -122,6 +119,38 @@ namespace FileManager
       txtVersion.Text = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString();
       ClearStatus();
       ApplySettings();
+    }
+    private void BrowseSource_Click(object sender, RoutedEventArgs e)
+    {
+      FolderBrowserDialog d = new FolderBrowserDialog() { SelectedPath = txtSource.Text };
+      DialogResult result = d.ShowDialog();
+      if (result == System.Windows.Forms.DialogResult.OK)
+      {
+        txtSource.Text = d.SelectedPath;
+      }
+    }
+    private void BrowseDestination_Click(object sender, RoutedEventArgs e)
+    {
+      FolderBrowserDialog d = new FolderBrowserDialog() { SelectedPath = txtDestination.Text };
+      DialogResult result = d.ShowDialog();
+      if (result == System.Windows.Forms.DialogResult.OK)
+      {
+        txtDestination.Text = d.SelectedPath;
+      }
+    }
+    private void BrowseLog_Click(object sender, RoutedEventArgs e)
+    {
+      var f = new SaveFileDialog() { InitialDirectory = txtLog.Text, DefaultExt = " txt", Filter = "Text files (*.txt)|*.txt|All files (*.*)|*.*" };
+      f.ShowDialog();
+      txtLog.Text = f.FileName;
+    }
+   private void _MouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+      if (e.ChangedButton == MouseButton.Left) { this.DragMove(); }
+      if (e.ChangedButton == MouseButton.Left && e.ClickCount == 2)
+      {
+        this.WindowState = this.WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+      }
     }
   }
 }
