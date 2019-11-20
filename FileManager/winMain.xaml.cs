@@ -117,6 +117,9 @@ namespace FileManager
     private void Window_Initialized(object sender, EventArgs e)
     {
       txtVersion.Text = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString();
+      progressbar.Value = 0;
+      lblStatus.Content = "";
+      lblFileCount.Content = "";
       ClearStatus();
       ApplySettings();
     }

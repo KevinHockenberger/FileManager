@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:FileManager"
         mc:Ignorable="d"
-        Title="File Manager" Height="450" Width="469" BorderThickness="2" ResizeMode="CanResizeWithGrip" Icon="include/folderEmpty.ico" Background="#FF464646" Foreground="White" FontFamily="Arial" FontSize="14" WindowStyle="None" Initialized="Window_Initialized" Loaded="Window_Loaded" Closing="Window_Closing" >
+        Title="File Manager" Height="450" Width="472" BorderThickness="2" ResizeMode="CanResizeWithGrip" Icon="include/folderEmpty.ico" Background="#FF464646" Foreground="White" FontFamily="Arial" FontSize="14" WindowStyle="None" Initialized="Window_Initialized" Loaded="Window_Loaded" Closing="Window_Closing" >
   <Window.Resources>
     <!--<Style TargetType="{x:Type local:winMain}">
       <Setter Property="Background" Value="#FF464646"/>
@@ -28,61 +28,74 @@
       <Setter Property="FontSize" Value="14"/>
       <Setter Property="VerticalContentAlignment" Value="Center"/>
     </Style>
-    <Style TargetType="{x:Type Button}">
-      <Setter Property="Background" Value="#FF9C9C9C"/>
+    <Style TargetType="{x:Type TextBlock}">
+      <!--<Setter Property="Background" Value="#FF9C9C9C"/>-->
+      <Setter Property="Foreground" Value="Black"/>
+      <Setter Property="FontFamily" Value="Arial"/>
+      <Setter Property="FontSize" Value="14"/>
+    </Style>
+    <Style TargetType="{x:Type CheckBox}">
+      <!--<Setter Property="Background" Value="#FF9C9C9C"/>-->
       <Setter Property="Foreground" Value="White"/>
       <Setter Property="FontFamily" Value="Arial"/>
       <Setter Property="FontSize" Value="14"/>
-      <Setter Property="VerticalContentAlignment" Value="Center"/>
+    </Style>
+    <Style TargetType="{x:Type Button}">
+      <Setter Property="Background" Value="#FF9C9C9C"/>
+      <Setter Property="Foreground" Value="White"/>
+      <!--<Setter Property="FontFamily" Value="Arial"/>-->
+      <Setter Property="FontSize" Value="16"/>
+      <!--<Setter Property="VerticalContentAlignment" Value="Center"/>-->
+      <Setter Property="BorderBrush" Value="#FF131313"/>
     </Style>
   </Window.Resources>
   <DockPanel>
     <Border DockPanel.Dock="Top" BorderBrush="Black" BorderThickness="0,0,0,1" MouseDown="_MouseDown">
-    <Grid>
-      <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="Auto"/>
-        <ColumnDefinition Width="Auto"/>
-        <ColumnDefinition/>
-        <ColumnDefinition Width="Auto"/>
-        <ColumnDefinition Width="Auto"/>
-        <ColumnDefinition Width="Auto"/>
-        <ColumnDefinition Width="Auto"/>
-      </Grid.ColumnDefinitions>
-      <Button x:Name="btnApp" Width="24" Height="24" VerticalAlignment="Top" Click="BtnApp_Click" Background="Transparent" BorderBrush="{x:Null}">
-        <Image Source="include\folderEmpty.ico" Width="18" Height="18"/>
-      </Button>
-      <Border Grid.Column="1" BorderThickness="0,0,1,0" BorderBrush="White">
-        <TextBlock x:Name="txtAppName" Text="File Manager" Margin="5,0" VerticalAlignment="Center"/>
-      </Border>
-      <Border Grid.Column="2">
-        <TextBlock x:Name="txtStatus" Text="Message" Margin="5,0" VerticalAlignment="Center" TextWrapping="Wrap" TextTrimming="CharacterEllipsis"/>
-      </Border>
-      <Border Grid.Column="3">
-        <TextBlock x:Name="txtVersion" Text="1.0.0" Margin="5,0" VerticalAlignment="Center"/>
-      </Border>
-      <Button x:Name="btnMinimize" Width="24" Height="24" Grid.Column="4" BorderThickness="1" BorderBrush="White" VerticalAlignment="Top" Click="BtnMinimize_Click" Background="Transparent">
-        <Image Source="include\minimize.png" Width="18" Height="18"/>
-      </Button>
-      <Button x:Name="btnMaximize" Width="24" Height="24" Grid.Column="5" BorderThickness="1" BorderBrush="White" VerticalAlignment="Top" Click="BtnMaximize_Click" Background="Transparent">
-        <Image x:Name="btnMaxImage" Width="18" Height="18">
-          <Image.Style>
-            <Style TargetType="Image">
-              <Style.Triggers>
-                <DataTrigger Binding="{Binding RelativeSource={RelativeSource Mode=FindAncestor, AncestorType={x:Type Window}}, Path=WindowState}" Value="Normal">
-                  <Setter Property="Source" Value="include\maximize.png"/>
-                </DataTrigger>
-                <DataTrigger Binding="{Binding RelativeSource={RelativeSource Mode=FindAncestor, AncestorType={x:Type Window}}, Path=WindowState}" Value="Maximized">
-                  <Setter Property="Source" Value="include\normalize.png"/>
-                </DataTrigger>
-              </Style.Triggers>
-            </Style>
-          </Image.Style>
-        </Image>
-      </Button>
-      <Button x:Name="btnClose" Width="24" Height="24" Grid.Column="6" BorderThickness="1" BorderBrush="White" VerticalAlignment="Top" Click="BtnClose_Click" Background="Transparent">
-        <Image Source="include\x-neon.png" Width="18" Height="18"/>
-      </Button>
-    </Grid>
+      <Grid>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="Auto"/>
+          <ColumnDefinition Width="Auto"/>
+          <ColumnDefinition/>
+          <ColumnDefinition Width="Auto"/>
+          <ColumnDefinition Width="Auto"/>
+          <ColumnDefinition Width="Auto"/>
+          <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+        <Button x:Name="btnApp" Width="24" Height="24" VerticalAlignment="Top" Click="BtnApp_Click" Background="Transparent" BorderBrush="{x:Null}">
+          <Image Source="include\folderEmpty.ico" Width="18" Height="18"/>
+        </Button>
+        <Border Grid.Column="1" BorderThickness="0,0,1,0" BorderBrush="White">
+          <TextBlock x:Name="txtAppName" Text="File Manager" Margin="5,0" VerticalAlignment="Center" Foreground="White"/>
+        </Border>
+        <Border Grid.Column="2">
+          <TextBlock x:Name="txtStatus" Text="Message" Margin="5,0" VerticalAlignment="Center" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" Foreground="White"/>
+        </Border>
+        <Border Grid.Column="3">
+          <TextBlock x:Name="txtVersion" Text="1.0.0" Margin="5,0" VerticalAlignment="Center" Foreground="White"/>
+        </Border>
+        <Button x:Name="btnMinimize" Width="24" Height="24" Grid.Column="4" BorderThickness="1" VerticalAlignment="Top" Click="BtnMinimize_Click" Background="Transparent" BorderBrush="#FF686868">
+          <Image Source="include\minimize.png" Width="18" Height="18"/>
+        </Button>
+        <Button x:Name="btnMaximize" Width="24" Height="24" Grid.Column="5" BorderThickness="1" VerticalAlignment="Top" Click="BtnMaximize_Click" Background="Transparent" BorderBrush="#FF686868">
+          <Image x:Name="btnMaxImage" Width="18" Height="18">
+            <Image.Style>
+              <Style TargetType="Image">
+                <Style.Triggers>
+                  <DataTrigger Binding="{Binding RelativeSource={RelativeSource Mode=FindAncestor, AncestorType={x:Type Window}}, Path=WindowState}" Value="Normal">
+                    <Setter Property="Source" Value="include\maximize.png"/>
+                  </DataTrigger>
+                  <DataTrigger Binding="{Binding RelativeSource={RelativeSource Mode=FindAncestor, AncestorType={x:Type Window}}, Path=WindowState}" Value="Maximized">
+                    <Setter Property="Source" Value="include\normalize.png"/>
+                  </DataTrigger>
+                </Style.Triggers>
+              </Style>
+            </Image.Style>
+          </Image>
+        </Button>
+        <Button x:Name="btnClose" Width="24" Height="24" Grid.Column="6" BorderThickness="1" VerticalAlignment="Top" Click="BtnClose_Click" Background="Transparent" BorderBrush="#FF686868">
+          <Image Source="include\x-neon.png" Width="18" Height="18"/>
+        </Button>
+      </Grid>
     </Border>
     <Border DockPanel.Dock="Bottom" BorderThickness="0,1,0,0" BorderBrush="Black">
       <StatusBar Height="32" Background="Transparent" >
@@ -90,25 +103,28 @@
           <ItemsPanelTemplate>
             <Grid>
               <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="2*" />
-                <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="1*" />
-                <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="1*" />
+                <ColumnDefinition Width="1*" /><!-- status -->
+                <ColumnDefinition Width="Auto" /><!-- seperator -->
+                <ColumnDefinition Width="Auto" /><!-- number of files -->
+                <ColumnDefinition Width="Auto" /><!-- seperator -->
+                <ColumnDefinition Width="200" /><!-- progressbar -->
               </Grid.ColumnDefinitions>
             </Grid>
           </ItemsPanelTemplate>
         </StatusBar.ItemsPanel>
         <StatusBarItem>
-          <Label x:Name="lblStatus" Content=""/>
+          <Label x:Name="lblStatus" Content="status..."/>
         </StatusBarItem>
         <Separator Grid.Column="1" />
         <StatusBarItem Grid.Column="2" HorizontalContentAlignment="Right">
-          <Label x:Name="lblSize" Content=""/>
+          <Label x:Name="lblFileCount" Content="number of files..."/>
         </StatusBarItem>
         <Separator Grid.Column="3" />
-        <StatusBarItem Grid.Column="4" HorizontalContentAlignment="Right">
-          <Label x:Name="lblMod" Content="" />
+        <StatusBarItem Grid.Column="4" VerticalContentAlignment="Stretch" HorizontalContentAlignment="Stretch">
+          <Grid>
+            <ProgressBar x:Name="progressbar" Value="50" Margin="0,2,12,2"/>
+            <TextBlock Text="{Binding ElementName=progressbar, Path=Value, StringFormat={}{0:0}%}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Grid>
         </StatusBarItem>
       </StatusBar>
     </Border>
@@ -124,14 +140,41 @@
         <ColumnDefinition Width="Auto"/>
       </Grid.ColumnDefinitions>
       <Label Content="Source" Grid.Column="0" Grid.Row="0" HorizontalAlignment="Right" VerticalAlignment="Center"/>
-      <TextBox x:Name="txtSource" Grid.Column="1" Grid.Row="0" Text="..."/>
+      <TextBox x:Name="txtSource" Grid.Column="1" Grid.Row="0" Text="..." BorderBrush="#FF3E3E3E"/>
       <Button Grid.Column="2" Grid.Row="0" Content="..." Width="26" VerticalAlignment="Stretch" Click="BrowseSource_Click"/>
       <Label Content="Destination" Grid.Column="0" Grid.Row="1" HorizontalAlignment="Right" VerticalAlignment="Center"/>
-      <TextBox x:Name="txtDestination" Grid.Column="1" Grid.Row="1" Text="..."/>
+      <TextBox x:Name="txtDestination" Grid.Column="1" Grid.Row="1" Text="..." BorderBrush="#FF3E3E3E"/>
       <Button Grid.Column="2" Grid.Row="1" Content="..." Width="26" VerticalAlignment="Stretch" Click="BrowseDestination_Click"/>
       <Label Content="Log" Grid.Column="0" Grid.Row="2" HorizontalAlignment="Right" VerticalAlignment="Center"/>
-      <TextBox x:Name="txtLog" Grid.Column="1" Grid.Row="2" Text="..."/>
+      <TextBox x:Name="txtLog" Grid.Column="1" Grid.Row="2" Text="..." BorderBrush="#FF3E3E3E"/>
       <Button Grid.Column="2" Grid.Row="2" Content="..." Width="26" VerticalAlignment="Stretch" Click="BrowseLog_Click"/>
+    </Grid>
+    <Grid DockPanel.Dock="Top" >
+      <ScrollViewer VerticalScrollBarVisibility="Disabled" HorizontalScrollBarVisibility="Auto">
+        <StackPanel Margin="5" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Top">
+          <CheckBox Content="recursive" Margin="10,0" VerticalAlignment="Bottom"/>
+          <CheckBox Content="delete original" Margin="10,0" VerticalAlignment="Bottom"/>
+          <StackPanel Orientation="Horizontal" Margin="10,0">
+            <CheckBox Content="archive after" VerticalAlignment="Bottom"/>
+            <TextBox Width="40" Margin="5,0" VerticalAlignment="Bottom" Text="730" HorizontalContentAlignment="Right"/>
+            <Label Content="days" Padding="0" VerticalContentAlignment="Top" VerticalAlignment="Bottom"/>
+          </StackPanel>
+        </StackPanel>
+      </ScrollViewer>
+    </Grid>
+    <Grid DockPanel.Dock="Top">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition/>
+        <ColumnDefinition/>
+        <ColumnDefinition/>
+      </Grid.ColumnDefinitions>
+        <Button Content="more" Grid.Column="0" Padding="10,5" Margin="10"/>
+      <Button Content="preview" Grid.Column="1" Padding="10,5" Margin="10"/>
+      <Button Content="start" Grid.Column="2" Padding="10,5" Margin="10"/>
+        
+    </Grid>
+    <Grid DockPanel.Dock="Top">
+      
     </Grid>
   </DockPanel>
 </Window>
