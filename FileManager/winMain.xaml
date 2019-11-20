@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:FileManager"
         mc:Ignorable="d"
-        Title="File Manager" Height="450" Width="472" BorderThickness="2" ResizeMode="CanResizeWithGrip" Icon="include/folderEmpty.ico" Background="#FF464646" Foreground="White" FontFamily="Arial" FontSize="14" WindowStyle="None" Initialized="Window_Initialized" Loaded="Window_Loaded" Closing="Window_Closing" >
+        Title="File Manager" Height="547" Width="472" BorderThickness="2" ResizeMode="CanResizeWithGrip" Icon="include/folderEmpty.ico" Background="#FF464646" Foreground="White" FontFamily="Arial" FontSize="14" WindowStyle="None" Initialized="Window_Initialized" Loaded="Window_Loaded" Closing="Window_Closing" >
   <Window.Resources>
     <!--<Style TargetType="{x:Type local:winMain}">
       <Setter Property="Background" Value="#FF464646"/>
@@ -64,10 +64,10 @@
         <Button x:Name="btnApp" Width="24" Height="24" VerticalAlignment="Top" Click="BtnApp_Click" Background="Transparent" BorderBrush="{x:Null}">
           <Image Source="include\folderEmpty.ico" Width="18" Height="18"/>
         </Button>
-        <Border Grid.Column="1" BorderThickness="0,0,1,0" BorderBrush="White">
+        <Border Grid.Column="1">
           <TextBlock x:Name="txtAppName" Text="File Manager" Margin="5,0" VerticalAlignment="Center" Foreground="White"/>
         </Border>
-        <Border Grid.Column="2">
+        <Border Grid.Column="2" BorderThickness="1,0,1,0" BorderBrush="White">
           <TextBlock x:Name="txtStatus" Text="Message" Margin="5,0" VerticalAlignment="Center" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" Foreground="White"/>
         </Border>
         <Border Grid.Column="3">
@@ -103,11 +103,16 @@
           <ItemsPanelTemplate>
             <Grid>
               <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="1*" /><!-- status -->
-                <ColumnDefinition Width="Auto" /><!-- seperator -->
-                <ColumnDefinition Width="Auto" /><!-- number of files -->
-                <ColumnDefinition Width="Auto" /><!-- seperator -->
-                <ColumnDefinition Width="200" /><!-- progressbar -->
+                <ColumnDefinition Width="1*" />
+                <!-- status -->
+                <ColumnDefinition Width="Auto" />
+                <!-- seperator -->
+                <ColumnDefinition Width="Auto" />
+                <!-- number of files -->
+                <ColumnDefinition Width="Auto" />
+                <!-- seperator -->
+                <ColumnDefinition Width="200" />
+                <!-- progressbar -->
               </Grid.ColumnDefinitions>
             </Grid>
           </ItemsPanelTemplate>
@@ -122,8 +127,9 @@
         <Separator Grid.Column="3" />
         <StatusBarItem Grid.Column="4" VerticalContentAlignment="Stretch" HorizontalContentAlignment="Stretch">
           <Grid>
-            <ProgressBar x:Name="progressbar" Value="50" Margin="0,2,12,2"/>
-            <TextBlock Text="{Binding ElementName=progressbar, Path=Value, StringFormat={}{0:0}%}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+            <Label Content="-" HorizontalAlignment="Center"/>
+            <ProgressBar x:Name="progressbar" Value="50" Margin="6,2,12,2" />
+            <TextBlock x:Name="txtProgress" Text="{Binding ElementName=progressbar, Path=Value, StringFormat={}{0:0}%}" HorizontalAlignment="Center" VerticalAlignment="Center" />
           </Grid>
         </StatusBarItem>
       </StatusBar>
@@ -168,13 +174,83 @@
         <ColumnDefinition/>
         <ColumnDefinition/>
       </Grid.ColumnDefinitions>
-        <Button Content="more" Grid.Column="0" Padding="10,5" Margin="10"/>
+      <Button Content="more" Grid.Column="0" Padding="10,5" Margin="10"/>
       <Button Content="preview" Grid.Column="1" Padding="10,5" Margin="10"/>
       <Button Content="start" Grid.Column="2" Padding="10,5" Margin="10"/>
-        
     </Grid>
-    <Grid DockPanel.Dock="Top">
-      
-    </Grid>
+    <Border BorderThickness="1" BorderBrush="#FFB4B4B4">
+      <Grid DockPanel.Dock="Top">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition/>
+          <ColumnDefinition Width="4"/>
+          <ColumnDefinition/>
+        </Grid.ColumnDefinitions>
+        <GridSplitter Grid.Column="1"  Background="#FF787878" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
+        <Grid>
+          <Grid.RowDefinitions>
+            <RowDefinition Height="135"/>
+            <RowDefinition Height="4"/>
+            <RowDefinition/>
+          </Grid.RowDefinitions>
+          <GridSplitter Grid.Row="1"  Background="#FFC1C1C1" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
+          <Grid>
+            <Grid.RowDefinitions>
+              <RowDefinition Height="Auto"/>
+              <RowDefinition Height="Auto"/>
+              <RowDefinition Height="Auto"/>
+              <RowDefinition/>
+            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="Auto"/>
+              <ColumnDefinition/>
+            </Grid.ColumnDefinitions>
+            <Label Grid.Row="0" Content="folders:" HorizontalAlignment="Right"/>
+            <Label Grid.Row="1" Content="files:" HorizontalAlignment="Right"/>
+            <Label Grid.Row="2" Content="size:" HorizontalAlignment="Right"/>
+            <Label Grid.Row="0" Grid.Column="1" Content="..." />
+            <Label Grid.Row="1" Grid.Column="1" Content="..." />
+            <Label Grid.Row="2" Grid.Column="1" Content="..." />
+          </Grid>
+          <TreeView Grid.Row="2">
+            
+          </TreeView>
+        </Grid>
+        <Grid Grid.Column="2">
+          <Grid.RowDefinitions>
+            <RowDefinition Height="135"/>
+            <RowDefinition Height="4"/>
+            <RowDefinition/>
+          </Grid.RowDefinitions>
+          <GridSplitter Grid.Row="1"  Background="#FFC1C1C1" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
+          <Grid>
+            <Grid.RowDefinitions>
+              <RowDefinition Height="Auto"/>
+              <RowDefinition Height="Auto"/>
+              <RowDefinition Height="Auto"/>
+              <RowDefinition Height="Auto"/>
+              <RowDefinition Height="Auto"/>
+              <RowDefinition/>
+            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="Auto"/>
+              <ColumnDefinition/>
+            </Grid.ColumnDefinitions>
+            <Label Grid.Row="0" Content="path:" HorizontalAlignment="Right"/>
+            <Label Grid.Row="1" Content="folders:" HorizontalAlignment="Right"/>
+            <Label Grid.Row="2" Content="files:" HorizontalAlignment="Right"/>
+            <Label Grid.Row="3" Content="size:" HorizontalAlignment="Right"/>
+            <Label Grid.Row="4" Content="modified:" HorizontalAlignment="Right"/>
+            <Label Grid.Row="0" Grid.Column="1" Content="..." />
+            <Label Grid.Row="1" Grid.Column="1" Content="..." />
+            <Label Grid.Row="2" Grid.Column="1" Content="..." />
+            <Label Grid.Row="3" Grid.Column="1" Content="..." />
+            <Label Grid.Row="4" Grid.Column="1" Content="..." />
+          </Grid>
+          <TreeView Grid.Row="2">
+
+          </TreeView>
+        </Grid>
+      </Grid>
+    </Border>
   </DockPanel>
 </Window>

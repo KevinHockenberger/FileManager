@@ -118,6 +118,7 @@ namespace FileManager
     {
       txtVersion.Text = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString();
       progressbar.Value = 0;
+      progressbar.Visibility = Visibility.Hidden; txtProgress.Visibility = Visibility.Hidden;
       lblStatus.Content = "";
       lblFileCount.Content = "";
       ClearStatus();
