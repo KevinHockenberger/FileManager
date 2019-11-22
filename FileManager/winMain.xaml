@@ -4,9 +4,12 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:FileManager"
+        xmlns:properties="clr-namespace:FileManager.Properties"
         mc:Ignorable="d"
         Title="File Manager" Height="547" Width="472" BorderThickness="2" ResizeMode="CanResizeWithGrip" Icon="include/folderEmpty.ico" Background="#FF464646" Foreground="White" FontFamily="Arial" FontSize="14" WindowStyle="None" Initialized="Window_Initialized" Loaded="Window_Loaded" Closing="Window_Closing" >
   <Window.Resources>
+    <BooleanToVisibilityConverter x:Key="VisibleIfTrueConverter" />
+
     <!--<Style TargetType="{x:Type local:winMain}">
       <Setter Property="Background" Value="#FF464646"/>
       <Setter Property="Foreground" Value="White"/>
@@ -19,6 +22,7 @@
       <Setter Property="Foreground" Value="White"/>
       <Setter Property="FontFamily" Value="Arial"/>
       <Setter Property="FontSize" Value="14"/>
+      <Setter Property="Padding" Value="5,2"/>
       <Setter Property="VerticalContentAlignment" Value="Center"/>
     </Style>
     <Style TargetType="{x:Type TextBox}">
@@ -30,9 +34,10 @@
     </Style>
     <Style TargetType="{x:Type TextBlock}">
       <!--<Setter Property="Background" Value="#FF9C9C9C"/>-->
-      <Setter Property="Foreground" Value="Black"/>
+      <Setter Property="Foreground" Value="White"/>
       <Setter Property="FontFamily" Value="Arial"/>
       <Setter Property="FontSize" Value="14"/>
+      <Setter Property="Padding" Value="5,2"/>
     </Style>
     <Style TargetType="{x:Type CheckBox}">
       <!--<Setter Property="Background" Value="#FF9C9C9C"/>-->
@@ -118,18 +123,18 @@
           </ItemsPanelTemplate>
         </StatusBar.ItemsPanel>
         <StatusBarItem>
-          <Label x:Name="lblStatus" Content="status..."/>
+          <TextBlock x:Name="txtStatusB" Text="{Binding Status}"/>
         </StatusBarItem>
         <Separator Grid.Column="1" />
         <StatusBarItem Grid.Column="2" HorizontalContentAlignment="Right">
-          <Label x:Name="lblFileCount" Content="number of files..."/>
+          <TextBlock x:Name="txtFileCount" Text="{Binding FilesOfFiles}"/>
         </StatusBarItem>
         <Separator Grid.Column="3" />
         <StatusBarItem Grid.Column="4" VerticalContentAlignment="Stretch" HorizontalContentAlignment="Stretch">
           <Grid>
             <Label Content="-" HorizontalAlignment="Center"/>
-            <ProgressBar x:Name="progressbar" Value="50" Margin="6,2,12,2" />
-            <TextBlock x:Name="txtProgress" Text="{Binding ElementName=progressbar, Path=Value, StringFormat={}{0:0}%}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+            <ProgressBar x:Name="progressbar" Value="{Binding Progress}" Margin="6,2,12,2" />
+            <TextBlock x:Name="txtProgress" Text="{Binding ElementName=progressbar, Path=Value, StringFormat={}{0:0}%}" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="Black"/>
           </Grid>
         </StatusBarItem>
       </StatusBar>
@@ -146,23 +151,30 @@
         <ColumnDefinition Width="Auto"/>
       </Grid.ColumnDefinitions>
       <Label Content="Source" Grid.Column="0" Grid.Row="0" HorizontalAlignment="Right" VerticalAlignment="Center"/>
-      <TextBox x:Name="txtSource" Grid.Column="1" Grid.Row="0" Text="..." BorderBrush="#FF3E3E3E"/>
+      <TextBox x:Name="txtSource" Grid.Column="1" Grid.Row="0" Text="{Binding Source={x:Static properties:Settings.Default},
+                               Path=LastSource}" BorderBrush="#FF3E3E3E"/>
       <Button Grid.Column="2" Grid.Row="0" Content="..." Width="26" VerticalAlignment="Stretch" Click="BrowseSource_Click"/>
       <Label Content="Destination" Grid.Column="0" Grid.Row="1" HorizontalAlignment="Right" VerticalAlignment="Center"/>
-      <TextBox x:Name="txtDestination" Grid.Column="1" Grid.Row="1" Text="..." BorderBrush="#FF3E3E3E"/>
+      <TextBox x:Name="txtDestination" Grid.Column="1" Grid.Row="1" Text="{Binding Source={x:Static properties:Settings.Default},
+                               Path=LastDestination}" BorderBrush="#FF3E3E3E"/>
       <Button Grid.Column="2" Grid.Row="1" Content="..." Width="26" VerticalAlignment="Stretch" Click="BrowseDestination_Click"/>
       <Label Content="Log" Grid.Column="0" Grid.Row="2" HorizontalAlignment="Right" VerticalAlignment="Center"/>
-      <TextBox x:Name="txtLog" Grid.Column="1" Grid.Row="2" Text="..." BorderBrush="#FF3E3E3E"/>
+      <TextBox x:Name="txtLog" Grid.Column="1" Grid.Row="2" Text="{Binding Source={x:Static properties:Settings.Default},
+                               Path=LastLogFile}" BorderBrush="#FF3E3E3E"/>
       <Button Grid.Column="2" Grid.Row="2" Content="..." Width="26" VerticalAlignment="Stretch" Click="BrowseLog_Click"/>
     </Grid>
     <Grid DockPanel.Dock="Top" >
       <ScrollViewer VerticalScrollBarVisibility="Disabled" HorizontalScrollBarVisibility="Auto">
         <StackPanel Margin="5" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Top">
-          <CheckBox Content="recursive" Margin="10,0" VerticalAlignment="Bottom"/>
-          <CheckBox Content="delete original" Margin="10,0" VerticalAlignment="Bottom"/>
+          <CheckBox x:Name="chkRecursive" Content="recursive" Margin="10,0" VerticalAlignment="Bottom" IsChecked="{Binding Source={x:Static properties:Settings.Default},
+                               Path=LastRecursive}"/>
+          <CheckBox x:Name="chkDeleteOriginal" Content="delete original" Margin="10,0" VerticalAlignment="Bottom" IsChecked="{Binding Source={x:Static properties:Settings.Default},
+                               Path=LastDeleteOriginal}"/>
           <StackPanel Orientation="Horizontal" Margin="10,0">
-            <CheckBox Content="archive after" VerticalAlignment="Bottom"/>
-            <TextBox Width="40" Margin="5,0" VerticalAlignment="Bottom" Text="730" HorizontalContentAlignment="Right"/>
+            <CheckBox x:Name="chkArchive" Content="archive after" VerticalAlignment="Bottom" IsChecked="{Binding Source={x:Static properties:Settings.Default},
+                               Path=LastArchive}"/>
+            <TextBox x:Name="txtArchiveDays" Width="40" Margin="5,0" VerticalAlignment="Bottom" Text="{Binding Source={x:Static properties:Settings.Default},
+                               Path=LastArchiveDays}" HorizontalContentAlignment="Right"/>
             <Label Content="days" Padding="0" VerticalContentAlignment="Top" VerticalAlignment="Bottom"/>
           </StackPanel>
         </StackPanel>
@@ -174,9 +186,9 @@
         <ColumnDefinition/>
         <ColumnDefinition/>
       </Grid.ColumnDefinitions>
-      <Button Content="more" Grid.Column="0" Padding="10,5" Margin="10"/>
-      <Button Content="preview" Grid.Column="1" Padding="10,5" Margin="10"/>
-      <Button Content="start" Grid.Column="2" Padding="10,5" Margin="10"/>
+      <Button x:Name="btnMore" Content="more" Grid.Column="0" Padding="10,5" Margin="10" Click="BtnMore_Click"/>
+      <Button x:Name="btnPreview" Content="preview" Grid.Column="1" Padding="10,5" Margin="10" Click="BtnPreview_Click"/>
+      <Button x:Name="btnStart" Content="start" Grid.Column="2" Padding="10,5" Margin="10" Click="BtnStart_Click"/>
     </Grid>
     <Border BorderThickness="1" BorderBrush="#FFB4B4B4">
       <Grid DockPanel.Dock="Top">
@@ -188,7 +200,7 @@
         <GridSplitter Grid.Column="1"  Background="#FF787878" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
         <Grid>
           <Grid.RowDefinitions>
-            <RowDefinition Height="135"/>
+            <RowDefinition Height="110"/>
             <RowDefinition Height="4"/>
             <RowDefinition/>
           </Grid.RowDefinitions>
@@ -207,17 +219,26 @@
             <Label Grid.Row="0" Content="folders:" HorizontalAlignment="Right"/>
             <Label Grid.Row="1" Content="files:" HorizontalAlignment="Right"/>
             <Label Grid.Row="2" Content="size:" HorizontalAlignment="Right"/>
-            <Label Grid.Row="0" Grid.Column="1" Content="..." />
-            <Label Grid.Row="1" Grid.Column="1" Content="..." />
-            <Label Grid.Row="2" Grid.Column="1" Content="..." />
+            <StackPanel Orientation="Horizontal" Grid.Row="0" Grid.Column="1" >
+              <Image Source="include\X-neon.png" Height="16" Width="16" Visibility="{Binding ProcessCancelled, Converter={StaticResource VisibleIfTrueConverter}}" ToolTip="Process was cancelled. This data is incomplete." Cursor="Help"/>
+              <TextBlock Text="{Binding TotalFolders, StringFormat='{}{0:#,##0}'}" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Grid.Row="1" Grid.Column="1">
+              <Image Source="include\X-neon.png" Height="16" Width="16" HorizontalAlignment="Right" Visibility="{Binding ProcessCancelled, Converter={StaticResource VisibleIfTrueConverter}}" ToolTip="Process was cancelled. This data is incomplete." Cursor="Help"/>
+              <TextBlock Text="{Binding TotalFiles, StringFormat='{}{0:#,##0}'}" Margin="0,0,18,0" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Grid.Row="2" Grid.Column="1">
+              <Image Source="include\X-neon.png" Height="16" Width="16" HorizontalAlignment="Right" Visibility="{Binding ProcessCancelled, Converter={StaticResource VisibleIfTrueConverter}}" ToolTip="Process was cancelled. This data is incomplete." Cursor="Help"/>
+              <TextBlock Text="{Binding TotalSize, StringFormat='{}{0:#,##0}'}" Margin="0,0,18,0" />
+            </StackPanel>
           </Grid>
           <TreeView Grid.Row="2">
-            
+
           </TreeView>
         </Grid>
         <Grid Grid.Column="2">
           <Grid.RowDefinitions>
-            <RowDefinition Height="135"/>
+            <RowDefinition Height="110"/>
             <RowDefinition Height="4"/>
             <RowDefinition/>
           </Grid.RowDefinitions>
@@ -240,11 +261,11 @@
             <Label Grid.Row="2" Content="files:" HorizontalAlignment="Right"/>
             <Label Grid.Row="3" Content="size:" HorizontalAlignment="Right"/>
             <Label Grid.Row="4" Content="modified:" HorizontalAlignment="Right"/>
-            <Label Grid.Row="0" Grid.Column="1" Content="..." />
-            <Label Grid.Row="1" Grid.Column="1" Content="..." />
-            <Label Grid.Row="2" Grid.Column="1" Content="..." />
-            <Label Grid.Row="3" Grid.Column="1" Content="..." />
-            <Label Grid.Row="4" Grid.Column="1" Content="..." />
+            <TextBlock Grid.Row="0" Grid.Column="1" Text="..." />
+            <TextBlock Grid.Row="1" Grid.Column="1" Text="..." />
+            <TextBlock Grid.Row="2" Grid.Column="1" Text="..." />
+            <TextBlock Grid.Row="3" Grid.Column="1" Text="..." />
+            <TextBlock Grid.Row="4" Grid.Column="1" Text="..." />
           </Grid>
           <TreeView Grid.Row="2">
 

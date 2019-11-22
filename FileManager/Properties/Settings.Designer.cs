@@ -94,5 +94,53 @@ namespace FileManager.Properties {
                 this["LastLogFile"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("730")]
+        public int LastArchiveDays {
+            get {
+                return ((int)(this["LastArchiveDays"]));
+            }
+            set {
+                this["LastArchiveDays"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool LastRecursive {
+            get {
+                return ((bool)(this["LastRecursive"]));
+            }
+            set {
+                this["LastRecursive"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool LastDeleteOriginal {
+            get {
+                return ((bool)(this["LastDeleteOriginal"]));
+            }
+            set {
+                this["LastDeleteOriginal"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool LastArchive {
+            get {
+                return ((bool)(this["LastArchive"]));
+            }
+            set {
+                this["LastArchive"] = value;
+            }
+        }
     }
 }
