@@ -12,19 +12,20 @@ using System.Windows.Data;
 using System.Windows.Forms;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using settings = FileManager.Properties.Settings;
 
 namespace FileManager
 {
-  public class NodeData
+  public class DirInfo
   {
     DirectoryInfo info { get; set; }
-    public NodeData(DirectoryInfo info)
+    public DirInfo(DirectoryInfo info)
     {
       this.info = info;
     }
-    public NodeData() { }
-    public NodeData(string path)
+    public DirInfo() { }
+    public DirInfo(string path)
     {
       info = new DirectoryInfo(path);
     }
@@ -34,10 +35,10 @@ namespace FileManager
       get
       {
         var children = new CompositeCollection();
-        var subDirItems = new List<NodeData>();
+        var subDirItems = new List<DirInfo>();
         foreach (var item in info.GetDirectories())
         {
-          subDirItems.Add(new NodeData(item));
+          subDirItems.Add(new DirInfo(item));
         }
         children.Add(new CollectionContainer() { Collection = subDirItems });
         children.Add(new CollectionContainer() { Collection = info.GetFiles() });
@@ -46,32 +47,34 @@ namespace FileManager
     }
     public NodeData Parent { get; set; }
   }
-  //public class NodeData
-  //{
-  //  public string Filespec { get; set; }
-  //  public int TotalDirectories { get; set; }
-  //  public int TotalFiles { get; set; }
-  //  public long TotalData { get; set; }
-  //  public DateTime Created { get; set; }
-  //  public DateTime LastModified { get; set; }
-  //}
-  //public class NodeModel
-  //{
-  //  public NodeData data { get; set; }
-  //  public NodeModel Parent { get; set; }
-  //  public ObservableCollection<NodeModel> Items { get; set; }
-  //  bool IsExpanded { get; set; }
-  //  bool IsSelected { get; set; }
-  //  BitmapImage Image { get; set; }/*=new BitmapImage(new Uri(@"pack://application:,,,/include/Continuous.png", UriKind.Absolute));*/
-  //  public NodeModel() : this(new NodeData(), null) { }
-  //  public NodeModel(NodeData node) : this(node, null) { }
-  //  public NodeModel(NodeData node, NodeModel parent)
-  //  {
-  //    data = node;
-  //    Parent = parent;
-  //    Items = new ObservableCollection<NodeModel>();
-  //  }
-  //}
+  public class NodeData
+  {
+    public string Filespec { get; set; }
+    public int TotalDirectories { get; set; }
+    public int TotalFiles { get; set; }
+    public long TotalData { get; set; }
+    public DateTime Created { get; set; }
+    public DateTime LastModified { get; set; }
+    public CompositeCollection Items { get; set; }
+  }
+  public class NodeModel
+  {
+    public NodeData data { get; set; }
+    public NodeModel Parent { get; set; }
+    public CompositeCollection Items { get; set; }
+    public bool IsExpanded { get; set; }
+    public bool IsSelected { get; set; }
+    public string Name { get; set; }
+    BitmapImage Image { get; set; }/*=new BitmapImage(new Uri(@"pack://application:,,,/include/Continuous.png", UriKind.Absolute));*/
+    public NodeModel() : this(new NodeData(), null) { }
+    public NodeModel(NodeData node) : this(node, null) { }
+    public NodeModel(NodeData node, NodeModel parent)
+    {
+      data = node;
+      Parent = parent;
+      //Items = new ObservableCollection<NodeModel>();
+    }
+  }
   /// <summary>
   /// Interaction logic for MainWindow.xaml
   /// </summary>
@@ -79,7 +82,7 @@ namespace FileManager
   {
     System.Threading.Timer clrHeader;
     static Thread processingThread = null;
-    public ObservableCollection<NodeData> SourceNodes { get; set; } = new ObservableCollection<NodeData>();
+    public ObservableCollection<NodeModel> SourceNodes { get; set; } = new ObservableCollection<NodeModel>();
     CancellationTokenSource cts;
     public event PropertyChangedEventHandler PropertyChanged;
     protected void OnPropertyChanged([CallerMemberName] string propertyName = null) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
@@ -227,7 +230,7 @@ namespace FileManager
       progressbar.Visibility = Visibility.Hidden; txtProgress.Visibility = Visibility.Hidden;
       ClearStatus();
       ApplySettings();
-      SourceNodes = new ObservableCollection<NodeData> { new NodeData(@"E:\") };
+      SourceNodes = new ObservableCollection<NodeModel>();
     }
     private void BrowseSource_Click(object sender, RoutedEventArgs e)
     {
@@ -335,13 +338,13 @@ namespace FileManager
     {
       var tcs = new TaskCompletionSource<string>();
       SourceNodes.Clear();
-      NodeData curNode = null;
+      NodeModel curNode = null;
       await Task.Factory.StartNew(() =>
       {
         processingThread = Thread.CurrentThread;
         try
         {
-          SourceNodes.Add(new NodeData() {  });
+          SourceNodes.Add(new NodeModel() {  });
           ProcessDirectory(dir, curNode, ct);
         }
         catch (Exception)
@@ -353,7 +356,7 @@ namespace FileManager
       tcs.SetResult("Complete");
       return tcs.Task.Result;
     }
-    private void ProcessDirectory(string dir, NodeData curNode, CancellationToken ct)
+    private void ProcessDirectory(string dir, NodeModel curNode, CancellationToken ct)
     {
       if (Recursive)
       {
@@ -363,7 +366,7 @@ namespace FileManager
           {
             return;
           }
-          SourceNodes.Add(new NodeData() { Parent = curNode });
+          SourceNodes.Add(new NodeModel() { Parent = curNode });
           TotalFolders++;
           ProcessDirectory(f, curNode, ct);
         }
@@ -375,7 +378,7 @@ namespace FileManager
           return;
         }
         TotalFiles++;
-        SourceNodes.Add(new NodeData() { Parent = curNode });
+        SourceNodes.Add(new NodeModel() { Parent = curNode });
         var fi = new FileInfo(f);
         TotalSize += fi.Length;
       }
