@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -7,40 +8,70 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Data;
 using System.Windows.Forms;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Media.Imaging;
 using settings = FileManager.Properties.Settings;
 
 namespace FileManager
 {
   public class NodeData
   {
-    public string Filespec { get; set; }
-    public int TotalDirectories { get; set; }
-    public int TotalFiles { get; set; }
-    public long TotalData { get; set; }
-    public DateTime Created { get; set; }
-    public DateTime LastModified { get; set; }
-  }
-  public class NodeModel
-  {
-    public NodeData data { get; set; }
-    public NodeModel Parent { get; set; }
-    public Collection<NodeModel> Items { get; set; }
-    bool IsExpanded { get; set; }
-    bool IsSelected { get; set; }
-    BitmapImage Image { get; set; }/*=new BitmapImage(new Uri(@"pack://application:,,,/include/Continuous.png", UriKind.Absolute));*/
-    public NodeModel() : this(new NodeData(), null) { }
-    public NodeModel(NodeData node) : this(node, null) { }
-    public NodeModel(NodeData node, NodeModel parent)
+    DirectoryInfo info { get; set; }
+    public NodeData(DirectoryInfo info)
     {
-      data = node;
-      Parent = parent;
-      Items = new Collection<NodeModel>();
+      this.info = info;
     }
+    public NodeData() { }
+    public NodeData(string path)
+    {
+      info = new DirectoryInfo(path);
+    }
+    public string Name { get { return info.Name; } }
+    public IList Items
+    {
+      get
+      {
+        var children = new CompositeCollection();
+        var subDirItems = new List<NodeData>();
+        foreach (var item in info.GetDirectories())
+        {
+          subDirItems.Add(new NodeData(item));
+        }
+        children.Add(new CollectionContainer() { Collection = subDirItems });
+        children.Add(new CollectionContainer() { Collection = info.GetFiles() });
+        return children;
+      }
+    }
+    public NodeData Parent { get; set; }
   }
+  //public class NodeData
+  //{
+  //  public string Filespec { get; set; }
+  //  public int TotalDirectories { get; set; }
+  //  public int TotalFiles { get; set; }
+  //  public long TotalData { get; set; }
+  //  public DateTime Created { get; set; }
+  //  public DateTime LastModified { get; set; }
+  //}
+  //public class NodeModel
+  //{
+  //  public NodeData data { get; set; }
+  //  public NodeModel Parent { get; set; }
+  //  public ObservableCollection<NodeModel> Items { get; set; }
+  //  bool IsExpanded { get; set; }
+  //  bool IsSelected { get; set; }
+  //  BitmapImage Image { get; set; }/*=new BitmapImage(new Uri(@"pack://application:,,,/include/Continuous.png", UriKind.Absolute));*/
+  //  public NodeModel() : this(new NodeData(), null) { }
+  //  public NodeModel(NodeData node) : this(node, null) { }
+  //  public NodeModel(NodeData node, NodeModel parent)
+  //  {
+  //    data = node;
+  //    Parent = parent;
+  //    Items = new ObservableCollection<NodeModel>();
+  //  }
+  //}
   /// <summary>
   /// Interaction logic for MainWindow.xaml
   /// </summary>
@@ -48,7 +79,7 @@ namespace FileManager
   {
     System.Threading.Timer clrHeader;
     static Thread processingThread = null;
-    public List<NodeModel> SourceNodes;
+    public ObservableCollection<NodeData> SourceNodes { get; set; } = new ObservableCollection<NodeData>();
     CancellationTokenSource cts;
     public event PropertyChangedEventHandler PropertyChanged;
     protected void OnPropertyChanged([CallerMemberName] string propertyName = null) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
@@ -196,6 +227,7 @@ namespace FileManager
       progressbar.Visibility = Visibility.Hidden; txtProgress.Visibility = Visibility.Hidden;
       ClearStatus();
       ApplySettings();
+      SourceNodes = new ObservableCollection<NodeData> { new NodeData(@"E:\") };
     }
     private void BrowseSource_Click(object sender, RoutedEventArgs e)
     {
@@ -302,13 +334,14 @@ namespace FileManager
     async Task<string> PreviewDirectory(string dir, CancellationToken ct)
     {
       var tcs = new TaskCompletionSource<string>();
-      SourceNodes = new List<NodeModel>();
-      NodeModel curNode = null;
+      SourceNodes.Clear();
+      NodeData curNode = null;
       await Task.Factory.StartNew(() =>
       {
         processingThread = Thread.CurrentThread;
         try
         {
+          SourceNodes.Add(new NodeData() {  });
           ProcessDirectory(dir, curNode, ct);
         }
         catch (Exception)
@@ -320,7 +353,7 @@ namespace FileManager
       tcs.SetResult("Complete");
       return tcs.Task.Result;
     }
-    private void ProcessDirectory(string dir, NodeModel curNode, CancellationToken ct)
+    private void ProcessDirectory(string dir, NodeData curNode, CancellationToken ct)
     {
       if (Recursive)
       {
@@ -330,7 +363,7 @@ namespace FileManager
           {
             return;
           }
-          SourceNodes.Add(new NodeModel() { Parent = curNode });
+          SourceNodes.Add(new NodeData() { Parent = curNode });
           TotalFolders++;
           ProcessDirectory(f, curNode, ct);
         }
@@ -342,10 +375,9 @@ namespace FileManager
           return;
         }
         TotalFiles++;
-        SourceNodes.Add(new NodeModel() { Parent = curNode });
+        SourceNodes.Add(new NodeData() { Parent = curNode });
         var fi = new FileInfo(f);
         TotalSize += fi.Length;
-        //Thread.Sleep(100);
       }
 
     }

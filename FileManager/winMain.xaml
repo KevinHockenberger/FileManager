@@ -5,6 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:FileManager"
         xmlns:properties="clr-namespace:FileManager.Properties"
+        xmlns:io="clr-namespace:System.IO;assembly=mscorlib"
         mc:Ignorable="d"
         Title="File Manager" Height="547" Width="472" BorderThickness="2" ResizeMode="CanResizeWithGrip" Icon="include/folderEmpty.ico" Background="#FF464646" Foreground="White" FontFamily="Arial" FontSize="14" WindowStyle="None" Initialized="Window_Initialized" Loaded="Window_Loaded" Closing="Window_Closing" >
   <Window.Resources>
@@ -232,8 +233,15 @@
               <TextBlock Text="{Binding TotalSize, StringFormat='{}{0:#,##0}'}" Margin="0,0,18,0" />
             </StackPanel>
           </Grid>
-          <TreeView Grid.Row="2">
-
+          <TreeView x:Name="treeSource" Grid.Row="2" ItemsSource="{Binding SourceNodes}">
+            <TreeView.Resources>
+              <HierarchicalDataTemplate DataType="{x:Type local:NodeData}" ItemsSource="{Binding Items}">
+                <TextBlock Text="{Binding Name}"/>
+              </HierarchicalDataTemplate>
+              <DataTemplate DataType="{x:Type io:FileInfo}" >
+                <TextBlock Text="{Binding Name}"/>
+              </DataTemplate>
+            </TreeView.Resources>
           </TreeView>
         </Grid>
         <Grid Grid.Column="2">
