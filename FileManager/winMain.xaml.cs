@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using System.ComponentModel;
 using System.IO;
 using System.Runtime.CompilerServices;
@@ -14,9 +15,65 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using settings = FileManager.Properties.Settings;
-
 namespace FileManager
 {
+  public static class NodeIcons
+  {
+    public static BitmapImage Folder = new BitmapImage(new Uri(@"pack://application:,,,/include/folderEmpty16.png", UriKind.Absolute));
+    public static BitmapImage File = new BitmapImage(new Uri(@"pack://application:,,,/include/documentSend16.png", UriKind.Absolute));
+  }
+  /// <summary>
+  /// https://thomaslevesque.com/2009/04/17/wpf-binding-to-an-asynchronous-collection/
+  /// </summary>
+  /// <typeparam name="T"></typeparam>
+  public class AsyncObservableCollection<T> : ObservableCollection<T>
+  {
+    private SynchronizationContext _synchronizationContext = SynchronizationContext.Current;
+
+    public AsyncObservableCollection() { }
+
+    public AsyncObservableCollection(IEnumerable<T> list) : base(list) { }
+
+    protected override void OnCollectionChanged(NotifyCollectionChangedEventArgs e)
+    {
+      if (SynchronizationContext.Current == _synchronizationContext)
+      {
+        // Execute the CollectionChanged event on the current thread
+        RaiseCollectionChanged(e);
+      }
+      else
+      {
+        // Raises the CollectionChanged event on the creator thread
+        _synchronizationContext.Send(RaiseCollectionChanged, e);
+      }
+    }
+
+    private void RaiseCollectionChanged(object param)
+    {
+      // We are in the creator thread, call the base implementation directly
+      base.OnCollectionChanged((NotifyCollectionChangedEventArgs)param);
+    }
+
+    protected override void OnPropertyChanged(PropertyChangedEventArgs e)
+    {
+      if (SynchronizationContext.Current == _synchronizationContext)
+      {
+        // Execute the PropertyChanged event on the current thread
+        RaisePropertyChanged(e);
+      }
+      else
+      {
+        // Raises the PropertyChanged event on the creator thread
+        _synchronizationContext.Send(RaisePropertyChanged, e);
+      }
+    }
+
+    private void RaisePropertyChanged(object param)
+    {
+      // We are in the creator thread, call the base implementation directly
+      base.OnPropertyChanged((PropertyChangedEventArgs)param);
+    }
+  }
   public class DirInfo
   {
     DirectoryInfo info { get; set; }
@@ -47,17 +104,8 @@ namespace FileManager
     }
     public NodeData Parent { get; set; }
   }
-  public class NodeData : INotifyPropertyChanged
+  public class NodeData
   {
-    public event PropertyChangedEventHandler PropertyChanged;
-    protected void OnPropertyChanged([CallerMemberName] string propertyName = null) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-    protected bool SetField<T>(ref T field, T value, [CallerMemberName] string propertyName = null)
-    {
-      if (EqualityComparer<T>.Default.Equals(field, value)) return false;
-      field = value;
-      OnPropertyChanged(propertyName);
-      return true;
-    }
     public string Filespec { get; set; }
     public string Name { get; set; }
     public int TotalDirectories { get; set; }
@@ -74,37 +122,46 @@ namespace FileManager
     }
 
   }
-  public class NodeModel : INotifyPropertyChanged
+  public class NodeModel
   {
-    public event PropertyChangedEventHandler PropertyChanged;
-    protected void OnPropertyChanged([CallerMemberName] string propertyName = null) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-    protected bool SetField<T>(ref T field, T value, [CallerMemberName] string propertyName = null)
-    {
-      if (EqualityComparer<T>.Default.Equals(field, value)) return false;
-      field = value;
-      OnPropertyChanged(propertyName);
-      return true;
-    }
     public NodeData data { get; set; }
     public NodeModel Parent { get; set; }
-    public ObservableCollection<NodeModel> Items { get; set; }
+    public AsyncObservableCollection<NodeModel> Items { get; set; }
     public bool IsExpanded { get; set; } = true;
     public bool IsSelected { get; set; }
-    private string _name;
-    public string Name { get => _name; set => SetField(ref _name, value); }
+    public string Name { get; set; }
 
-    BitmapImage Image { get; set; }/*=new BitmapImage(new Uri(@"pack://application:,,,/include/Continuous.png", UriKind.Absolute));*/
+    public BitmapImage Image { get; }/**/
     //public NodeModel() : this(new NodeData(), null) { }
-    public NodeModel(NodeData node) : this(node, null) { }
-    public NodeModel(NodeData node, NodeModel parent)
+    public NodeModel(NodeData node) : this(node, null, AvailableNodeImages.none) { }
+    public NodeModel(NodeData node, NodeModel parent, AvailableNodeImages image)
     {
       data = node;
       Name = node.Name;
       Parent = parent;
-      Items = new ObservableCollection<NodeModel>();
-
-      //Items = new ObservableCollection<NodeModel>();
+      Items = new AsyncObservableCollection<NodeModel>();
+      IsExpanded = !(parent != null);
+      switch (image)
+      {
+        case AvailableNodeImages.none:
+          break;
+        case AvailableNodeImages.folder:
+          Image = NodeIcons.Folder;
+          break;
+        case AvailableNodeImages.file:
+          Image = NodeIcons.File;
+          break;
+        default:
+          break;
+      }
     }
+  }
+  public enum AvailableNodeImages
+  {
+    none = 0,
+    folder = 1,
+    file = 2
+    //public static BitmapImage Folder = new BitmapImage(new Uri(@"pack://application:,,,/include/folderEmpty.ico", UriKind.Absolute));
   }
   /// <summary>
   /// Interaction logic for MainWindow.xaml
@@ -113,7 +170,7 @@ namespace FileManager
   {
     System.Threading.Timer clrHeader;
     static Thread processingThread = null;
-    public ObservableCollection<NodeModel> SourceNodes  { get; } = new ObservableCollection<NodeModel>();
+    public AsyncObservableCollection<NodeModel> SourceNodes { get; } = new AsyncObservableCollection<NodeModel>();
     CancellationTokenSource cts;
     public event PropertyChangedEventHandler PropertyChanged;
     protected void OnPropertyChanged([CallerMemberName] string propertyName = null) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
@@ -162,6 +219,7 @@ namespace FileManager
         throw;
       }
     }
+
     private void BtnClose_Click(object sender, RoutedEventArgs e)
     {
       this.Close();
@@ -372,22 +430,26 @@ namespace FileManager
 
 
 
-    async Task<string> PreviewDirectory(string dir, ObservableCollection<NodeModel> nodebase, CancellationToken ct)
+    async Task<string> PreviewDirectory(string dir, AsyncObservableCollection<NodeModel> nodebase, CancellationToken ct)
     {
       var tcs = new TaskCompletionSource<string>();
       if (!string.IsNullOrEmpty(dir) && nodebase != null)
       {
         try
         {
-          Dispatcher.Invoke(() => { nodebase.Clear(); });
-          NodeModel curNode = new NodeModel(new NodeData(dir)) { };
+          //Dispatcher.Invoke(() => {
+          nodebase.Clear();
+          //});
+          NodeModel curNode = new NodeModel(new NodeData(dir), null, AvailableNodeImages.folder);
           await Task.Factory.StartNew(() =>
           {
             processingThread = Thread.CurrentThread;
             try
             {
 
-              Dispatcher.BeginInvoke((Action)(() => { nodebase.Add(curNode); }));
+              //Dispatcher.BeginInvoke((Action)(() => {
+              nodebase.Add(curNode);
+              //}));
               ProcessDirectory(curNode, ct);
             }
             catch (Exception)
@@ -424,14 +486,14 @@ namespace FileManager
               {
                 return;
               }
-              var subNode = new NodeModel(new NodeData(f)) { Parent = curNode };
+              var subNode = new NodeModel(new NodeData(f), curNode, AvailableNodeImages.folder);
               ProcessDirectory(subNode, ct);
-              Dispatcher.BeginInvoke((Action)(() =>
-              {
-                curNode.Items.Add(subNode);
-              }));
+              //Dispatcher.BeginInvoke((Action)(() =>
+              //{
+              curNode.Items.Add(subNode);
+              //}));
               TotalFolders++;
-              Thread.Sleep(5);
+              //Thread.Sleep(5);
             }
 
           }
@@ -446,10 +508,10 @@ namespace FileManager
             return;
           }
           TotalFiles++;
-          Dispatcher.BeginInvoke((Action)(() =>
-          {
-            curNode.Items.Add(new NodeModel(new NodeData(f)) { Parent = curNode });
-          }));
+          //Dispatcher.BeginInvoke((Action)(() =>
+          //{
+          curNode.Items.Add(new NodeModel(new NodeData(f), curNode, AvailableNodeImages.file));
+          //}));
           var fi = new FileInfo(f);
           TotalSize += fi.Length;
         }
@@ -458,7 +520,7 @@ namespace FileManager
       {
         throw;
       }
-      Thread.Sleep(1);
+      //Thread.Sleep(1);
     }
   }
 }

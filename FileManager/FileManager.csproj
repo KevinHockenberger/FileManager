@@ -116,5 +116,11 @@
   <ItemGroup>
     <Resource Include="include\normalize.png" />
   </ItemGroup>
+  <ItemGroup>
+    <Resource Include="include\folderEmpty16.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="include\documentSend16.png" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

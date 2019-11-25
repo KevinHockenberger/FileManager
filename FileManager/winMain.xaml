@@ -233,15 +233,27 @@
               <TextBlock Text="{Binding TotalSize, StringFormat='{}{0:#,##0}'}" Margin="0,0,18,0" />
             </StackPanel>
           </Grid>
-          <TreeView x:Name="treeSource" Grid.Row="2" ItemsSource="{Binding SourceNodes, Mode=OneWay}">
+          <TreeView x:Name="treeSource" Grid.Row="2" ItemsSource="{Binding SourceNodes, Mode=OneWay}" Background="#FFE0E0E0" Foreground="Black">
             <TreeView.Resources>
+              <!--<Style TargetType="{x:Type TreeViewItem}">
+                <Setter Property="IsExpanded" Value="{Binding IsExpanded}"/>
+              </Style>-->
               <HierarchicalDataTemplate DataType="{x:Type local:NodeModel}" ItemsSource="{Binding Items}">
-                <TextBlock Text="{Binding Name}"/>
+                <StackPanel Orientation="Horizontal">
+                  <Image Source="{Binding Image}" Width="16" Height="16" Margin="0,0,5,0"/>
+                  <TextBlock Text="{Binding Name}"/>
+                </StackPanel>
               </HierarchicalDataTemplate>
               <!--<DataTemplate DataType="{x:Type local:NodeModel}" >
                 <TextBlock Text="{Binding Name}"/>
               </DataTemplate>-->
             </TreeView.Resources>
+            <TreeView.ItemContainerStyle>
+              <Style TargetType="TreeViewItem">
+                <Setter Property="IsSelected" Value="{Binding IsSelected}" />
+                <Setter Property="IsExpanded" Value="{Binding IsExpanded}" />
+              </Style>
+            </TreeView.ItemContainerStyle>
           </TreeView>
         </Grid>
         <Grid Grid.Column="2">
@@ -275,7 +287,7 @@
             <TextBlock Grid.Row="3" Grid.Column="1" Text="..." />
             <TextBlock Grid.Row="4" Grid.Column="1" Text="..." />
           </Grid>
-          <TreeView Grid.Row="2">
+          <TreeView Grid.Row="2" Background="#FFE0E0E0">
 
           </TreeView>
         </Grid>
