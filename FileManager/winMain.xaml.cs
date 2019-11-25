@@ -47,31 +47,62 @@ namespace FileManager
     }
     public NodeData Parent { get; set; }
   }
-  public class NodeData
+  public class NodeData : INotifyPropertyChanged
   {
+    public event PropertyChangedEventHandler PropertyChanged;
+    protected void OnPropertyChanged([CallerMemberName] string propertyName = null) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+    protected bool SetField<T>(ref T field, T value, [CallerMemberName] string propertyName = null)
+    {
+      if (EqualityComparer<T>.Default.Equals(field, value)) return false;
+      field = value;
+      OnPropertyChanged(propertyName);
+      return true;
+    }
     public string Filespec { get; set; }
+    public string Name { get; set; }
     public int TotalDirectories { get; set; }
     public int TotalFiles { get; set; }
     public long TotalData { get; set; }
     public DateTime Created { get; set; }
     public DateTime LastModified { get; set; }
-    public CompositeCollection Items { get; set; }
+    public Collection<NodeData> Items { get; set; }
+    public NodeData(string filespec)
+    {
+      Filespec = filespec;
+      Name = Path.GetFileName(filespec);
+      if (string.IsNullOrEmpty(Name)) { Name = filespec; }
+    }
+
   }
-  public class NodeModel
+  public class NodeModel : INotifyPropertyChanged
   {
+    public event PropertyChangedEventHandler PropertyChanged;
+    protected void OnPropertyChanged([CallerMemberName] string propertyName = null) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+    protected bool SetField<T>(ref T field, T value, [CallerMemberName] string propertyName = null)
+    {
+      if (EqualityComparer<T>.Default.Equals(field, value)) return false;
+      field = value;
+      OnPropertyChanged(propertyName);
+      return true;
+    }
     public NodeData data { get; set; }
     public NodeModel Parent { get; set; }
-    public CompositeCollection Items { get; set; }
-    public bool IsExpanded { get; set; }
+    public ObservableCollection<NodeModel> Items { get; set; }
+    public bool IsExpanded { get; set; } = true;
     public bool IsSelected { get; set; }
-    public string Name { get; set; }
+    private string _name;
+    public string Name { get => _name; set => SetField(ref _name, value); }
+
     BitmapImage Image { get; set; }/*=new BitmapImage(new Uri(@"pack://application:,,,/include/Continuous.png", UriKind.Absolute));*/
-    public NodeModel() : this(new NodeData(), null) { }
+    //public NodeModel() : this(new NodeData(), null) { }
     public NodeModel(NodeData node) : this(node, null) { }
     public NodeModel(NodeData node, NodeModel parent)
     {
       data = node;
+      Name = node.Name;
       Parent = parent;
+      Items = new ObservableCollection<NodeModel>();
+
       //Items = new ObservableCollection<NodeModel>();
     }
   }
@@ -82,7 +113,7 @@ namespace FileManager
   {
     System.Threading.Timer clrHeader;
     static Thread processingThread = null;
-    public ObservableCollection<NodeModel> SourceNodes { get; set; } = new ObservableCollection<NodeModel>();
+    public ObservableCollection<NodeModel> SourceNodes  { get; } = new ObservableCollection<NodeModel>();
     CancellationTokenSource cts;
     public event PropertyChangedEventHandler PropertyChanged;
     protected void OnPropertyChanged([CallerMemberName] string propertyName = null) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
@@ -116,6 +147,7 @@ namespace FileManager
     public bool Recursive { get { return settings.Default.LastRecursive; } }
     private bool _processCancelled;
     public bool ProcessCancelled { get => _processCancelled; set => SetField(ref _processCancelled, value); }
+
 
     public winMain()
     {
@@ -230,7 +262,6 @@ namespace FileManager
       progressbar.Visibility = Visibility.Hidden; txtProgress.Visibility = Visibility.Hidden;
       ClearStatus();
       ApplySettings();
-      SourceNodes = new ObservableCollection<NodeModel>();
     }
     private void BrowseSource_Click(object sender, RoutedEventArgs e)
     {
@@ -284,49 +315,56 @@ namespace FileManager
         TotalFolders = 0;
         TotalFiles = 0;
         TotalSize = 0;
-        btnPreview.Content = "cancel";
+        Dispatcher.Invoke(() => { btnPreview.Content = "cancel"; });
         return true;
       }
       else
       {
-        btnPreview.Content = "preview";
+        Dispatcher.Invoke(() => { btnPreview.Content = "preview"; });
         cts.Cancel();
         return false;
       }
     }
     private void CompleteProcessing()
     {
-      btnPreview.Content = "preview";
+      Dispatcher.Invoke(() => { btnPreview.Content = "preview"; });
     }
     private void AbortProcessing()
     {
       ProcessCancelled = true;
-      btnPreview.Content = "preview";
+      Dispatcher.Invoke(() => { btnPreview.Content = "preview"; });
     }
     private async Task PreviewAsync()
     {
-      if (!ToggleProcessing()) { return; }
-      if (Directory.Exists(txtSource.Text))
+      try
       {
-        cts = new CancellationTokenSource();
-        CancellationToken token = cts.Token;
-        _ = PreviewDirectory(txtSource.Text, token);
-        await Task.Factory.StartNew(() =>
+        if (!ToggleProcessing()) { return; }
+        if (Directory.Exists(txtSource.Text))
         {
-          while (processingThread != null)
+          cts = new CancellationTokenSource();
+          CancellationToken token = cts.Token;
+          _ = PreviewDirectory(txtSource.Text, SourceNodes, token);
+          await Task.Factory.StartNew(() =>
           {
-            if (token.IsCancellationRequested)
+            while (processingThread != null)
             {
-              processingThread.Abort();
-              processingThread = null;
-              cts = null;
-              AbortProcessing();
-              return;
+              if (token.IsCancellationRequested)
+              {
+                processingThread.Abort();
+                processingThread = null;
+                cts = null;
+                AbortProcessing();
+                return;
+              }
+              Thread.Sleep(5);
             }
-            Thread.Sleep(5);
-          }
-        });
-        CompleteProcessing();
+          });
+          CompleteProcessing();
+        }
+      }
+      catch (Exception ex)
+      {
+        Status = ex.Message;
       }
     }
 
@@ -334,55 +372,93 @@ namespace FileManager
 
 
 
-    async Task<string> PreviewDirectory(string dir, CancellationToken ct)
+    async Task<string> PreviewDirectory(string dir, ObservableCollection<NodeModel> nodebase, CancellationToken ct)
     {
       var tcs = new TaskCompletionSource<string>();
-      SourceNodes.Clear();
-      NodeModel curNode = null;
-      await Task.Factory.StartNew(() =>
+      if (!string.IsNullOrEmpty(dir) && nodebase != null)
       {
-        processingThread = Thread.CurrentThread;
         try
         {
-          SourceNodes.Add(new NodeModel() {  });
-          ProcessDirectory(dir, curNode, ct);
+          Dispatcher.Invoke(() => { nodebase.Clear(); });
+          NodeModel curNode = new NodeModel(new NodeData(dir)) { };
+          await Task.Factory.StartNew(() =>
+          {
+            processingThread = Thread.CurrentThread;
+            try
+            {
+
+              Dispatcher.BeginInvoke((Action)(() => { nodebase.Add(curNode); }));
+              ProcessDirectory(curNode, ct);
+            }
+            catch (Exception)
+            {
+              throw;
+            }
+          });
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+          processingThread = null;
+          cts = null;
+          tcs.SetResult("Error : " + ex.Message);
+          return tcs.Task.Result;
         }
-      });
+      }
       processingThread = null;
       cts = null;
       tcs.SetResult("Complete");
       return tcs.Task.Result;
     }
-    private void ProcessDirectory(string dir, NodeModel curNode, CancellationToken ct)
+    private void ProcessDirectory(NodeModel curNode, CancellationToken ct)
     {
-      if (Recursive)
+      if (curNode == null) { return; }
+      try
       {
-        foreach (var f in Directory.GetDirectories(dir))
+        if (Recursive)
+        {
+          try
+          {
+            foreach (var f in Directory.GetDirectories(curNode.data.Filespec))
+            {
+              if (ct.IsCancellationRequested)
+              {
+                return;
+              }
+              var subNode = new NodeModel(new NodeData(f)) { Parent = curNode };
+              ProcessDirectory(subNode, ct);
+              Dispatcher.BeginInvoke((Action)(() =>
+              {
+                curNode.Items.Add(subNode);
+              }));
+              TotalFolders++;
+              Thread.Sleep(5);
+            }
+
+          }
+          catch (UnauthorizedAccessException)
+          {
+          }
+        }
+        foreach (var f in Directory.GetFiles(curNode.data.Filespec))
         {
           if (ct.IsCancellationRequested)
           {
             return;
           }
-          SourceNodes.Add(new NodeModel() { Parent = curNode });
-          TotalFolders++;
-          ProcessDirectory(f, curNode, ct);
+          TotalFiles++;
+          Dispatcher.BeginInvoke((Action)(() =>
+          {
+            curNode.Items.Add(new NodeModel(new NodeData(f)) { Parent = curNode });
+          }));
+          var fi = new FileInfo(f);
+          TotalSize += fi.Length;
         }
       }
-      foreach (var f in Directory.GetFiles(dir))
+      catch (Exception)
       {
-        if (ct.IsCancellationRequested)
-        {
-          return;
-        }
-        TotalFiles++;
-        SourceNodes.Add(new NodeModel() { Parent = curNode });
-        var fi = new FileInfo(f);
-        TotalSize += fi.Length;
+        throw;
       }
-
+      Thread.Sleep(1);
     }
   }
 }

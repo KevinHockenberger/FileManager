@@ -233,14 +233,14 @@
               <TextBlock Text="{Binding TotalSize, StringFormat='{}{0:#,##0}'}" Margin="0,0,18,0" />
             </StackPanel>
           </Grid>
-          <TreeView x:Name="treeSource" Grid.Row="2" ItemsSource="{Binding SourceNodes}">
+          <TreeView x:Name="treeSource" Grid.Row="2" ItemsSource="{Binding SourceNodes, Mode=OneWay}">
             <TreeView.Resources>
-              <HierarchicalDataTemplate DataType="{x:Type local:NodeData}" ItemsSource="{Binding Items}">
+              <HierarchicalDataTemplate DataType="{x:Type local:NodeModel}" ItemsSource="{Binding Items}">
                 <TextBlock Text="{Binding Name}"/>
               </HierarchicalDataTemplate>
-              <DataTemplate DataType="{x:Type io:FileInfo}" >
+              <!--<DataTemplate DataType="{x:Type local:NodeModel}" >
                 <TextBlock Text="{Binding Name}"/>
-              </DataTemplate>
+              </DataTemplate>-->
             </TreeView.Resources>
           </TreeView>
         </Grid>
