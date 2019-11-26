@@ -120,10 +120,13 @@
     <Resource Include="include\folderEmpty16.png" />
   </ItemGroup>
   <ItemGroup>
-    <Resource Include="include\documentSend16.png" />
+    <Resource Include="include\nope16.png" />
   </ItemGroup>
   <ItemGroup>
-    <Resource Include="include\folderNope16.png" />
+    <Resource Include="include\document16.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="include\right16.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

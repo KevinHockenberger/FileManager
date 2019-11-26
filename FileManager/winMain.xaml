@@ -233,14 +233,17 @@
               <TextBlock Text="{Binding TotalSize, StringFormat='{}{0:#,##0}'}" Margin="0,0,18,0" />
             </StackPanel>
           </Grid>
-          <TreeView x:Name="treeSource" Grid.Row="2" ItemsSource="{Binding SourceNodes, Mode=OneWay}" Background="#FFE0E0E0" Foreground="Black" VirtualizingStackPanel.IsVirtualizing="True" VirtualizingStackPanel.VirtualizationMode="Recycling" >
+          <TreeView x:Name="treeSource" Grid.Row="2" ItemsSource="{Binding Nodes.SourceNodes, Mode=OneWay}" Background="#FFE0E0E0" Foreground="Black" TreeViewItem.Expanded="TreeViewItem_Expanded" TreeViewItem.Collapsed="TreeViewItem_Collapsed" VirtualizingStackPanel.IsVirtualizing="True" VirtualizingStackPanel.VirtualizationMode="Recycling" ScrollViewer.ScrollChanged="tree_ScrollChanged" TreeViewItem.Selected="treeViewItem_Selected">
             <TreeView.Resources>
-              <!--<Style TargetType="{x:Type TreeViewItem}">
-                <Setter Property="IsExpanded" Value="{Binding IsExpanded}"/>
+              <!--<Style TargetType="{x:Type ScrollViewer}">
+                <EventSetter Event="ScrollChanged" Handler="tree_ScrollChanged"/>
               </Style>-->
               <HierarchicalDataTemplate DataType="{x:Type local:NodeModel}" ItemsSource="{Binding Items}">
                 <StackPanel Orientation="Horizontal">
-                  <Image Source="{Binding Image}" Width="16" Height="16" Margin="0,0,5,0"/>
+                  <Grid Width="16" Height="16" Margin="0,0,5,0">
+                    <Image Source="{Binding Image}"/>
+                    <Image Source="{Binding ImageOverlay}"/>
+                  </Grid>
                   <TextBlock Text="{Binding Name}"/>
                 </StackPanel>
               </HierarchicalDataTemplate>
@@ -287,9 +290,36 @@
             <TextBlock Grid.Row="3" Grid.Column="1" Text="..." />
             <TextBlock Grid.Row="4" Grid.Column="1" Text="..." />
           </Grid>
-          <TreeView Grid.Row="2" Background="#FFE0E0E0">
-
+          <TreeView x:Name="treeDest" Grid.Row="2" ItemsSource="{Binding Nodes.DestNodes, Mode=OneWay}" Background="#FFE0E0E0" Foreground="Black" TreeViewItem.Expanded="TreeViewItem_Expanded" TreeViewItem.Collapsed="TreeViewItem_Collapsed" VirtualizingStackPanel.IsVirtualizing="True" VirtualizingStackPanel.VirtualizationMode="Recycling" ScrollViewer.ScrollChanged="tree_ScrollChanged" TreeViewItem.Selected="treeViewItem_Selected">
+            <TreeView.Resources>
+              <!--<Style TargetType="{x:Type ScrollViewer}">
+                <EventSetter Event="ScrollChanged" Handler="tree_ScrollChanged"/>
+              </Style>-->
+              <Style TargetType="{x:Type TreeViewItem}">
+                <EventSetter Event="Expanded" Handler="TreeViewItem_Expanded"/>
+                <EventSetter Event="Collapsed" Handler="TreeViewItem_Collapsed"/>
+              </Style>
+              <HierarchicalDataTemplate DataType="{x:Type local:NodeModel}" ItemsSource="{Binding Items}">
+                <StackPanel Orientation="Horizontal">
+                  <Grid Width="16" Height="16" Margin="0,0,5,0">
+                    <Image Source="{Binding Image}"/>
+                    <Image Source="{Binding ImageOverlay}"/>
+                  </Grid>
+                  <TextBlock Text="{Binding Name}"/>
+                </StackPanel>
+              </HierarchicalDataTemplate>
+              <!--<DataTemplate DataType="{x:Type local:NodeModel}" >
+                <TextBlock Text="{Binding Name}"/>
+              </DataTemplate>-->
+            </TreeView.Resources>
+            <TreeView.ItemContainerStyle>
+              <Style TargetType="TreeViewItem">
+                <Setter Property="IsSelected" Value="{Binding IsSelected}" />
+                <Setter Property="IsExpanded" Value="{Binding IsExpanded}" />
+              </Style>
+            </TreeView.ItemContainerStyle>
           </TreeView>
+
         </Grid>
       </Grid>
     </Border>

@@ -8,6 +8,7 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Forms;
 using System.Windows.Input;
@@ -19,8 +20,18 @@ namespace FileManager
   public static class NodeIcons
   {
     public static BitmapImage Folder = new BitmapImage(new Uri(@"pack://application:,,,/include/folderEmpty16.png", UriKind.Absolute));
-    public static BitmapImage FolderNope = new BitmapImage(new Uri(@"pack://application:,,,/include/folderNope16.png", UriKind.Absolute));
-    public static BitmapImage File = new BitmapImage(new Uri(@"pack://application:,,,/include/documentSend16.png", UriKind.Absolute));
+    public static BitmapImage Nope = new BitmapImage(new Uri(@"pack://application:,,,/include/nope16.png", UriKind.Absolute));
+    public static BitmapImage File = new BitmapImage(new Uri(@"pack://application:,,,/include/document16.png", UriKind.Absolute));
+    public static BitmapImage Right = new BitmapImage(new Uri(@"pack://application:,,,/include/right16.png", UriKind.Absolute));
+  }
+  public enum AvailableUpdateMethods
+  {
+    None = 0,
+    UpToDate = 1,
+    ToDestination = 2,
+    ToSource = 3,
+    ToArchive = 4,
+    Disregard = 5
   }
   /// <summary>
   /// https://thomaslevesque.com/2009/04/17/wpf-binding-to-an-asynchronous-collection/
@@ -122,41 +133,98 @@ namespace FileManager
     }
 
   }
-  public class NodeModel
+  public class NodeModel : INotifyPropertyChanged
   {
+    public event PropertyChangedEventHandler PropertyChanged;
+    protected void OnPropertyChanged([CallerMemberName] string propertyName = null) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+    protected bool SetField<T>(ref T field, T value, [CallerMemberName] string propertyName = null)
+    {
+      if (EqualityComparer<T>.Default.Equals(field, value)) return false;
+      field = value;
+      OnPropertyChanged(propertyName);
+      return true;
+    }
     public NodeData data { get; set; }
     public NodeModel Parent { get; set; }
+    public NodeModel LinkedNode { get; set; }
+    private bool _isFolder;
+    public bool IsFolder
+    {
+      get { return _isFolder; }
+      set
+      {
+        if (value != _isFolder)
+        {
+          _isFolder = value;
+          if (value) { Image = NodeIcons.Folder; } else { Image = NodeIcons.File; }
+        }
+      }
+    }
+    private AvailableUpdateMethods _updateMethod;
+    public AvailableUpdateMethods UpdateMethod
+    {
+      get { return _updateMethod; }
+      set
+      {
+        if (value != _updateMethod)
+        {
+          _updateMethod = value;
+          switch (value)
+          {
+            case AvailableUpdateMethods.None:
+            case AvailableUpdateMethods.UpToDate:
+              ImageOverlay = null;
+              break;
+            case AvailableUpdateMethods.ToDestination:
+              ImageOverlay = NodeIcons.Right;
+              break;
+            case AvailableUpdateMethods.ToSource:
+              break;
+            case AvailableUpdateMethods.ToArchive:
+              break;
+            case AvailableUpdateMethods.Disregard:
+              ImageOverlay = NodeIcons.Nope;
+              break;
+            default:
+              break;
+          }
+        }
+      }
+    }
     public ObservableCollection<NodeModel> Items { get; set; }
-    public bool IsExpanded { get; set; } = true;
-    public bool IsSelected { get; set; }
+    private bool _isExpanded = true;
+    public bool IsExpanded { get => _isExpanded; set => SetField(ref _isExpanded, value); }
+    private bool _isSelected = true;
+    public bool IsSelected { get => _isSelected; set => SetField(ref _isSelected, value); }
     public string Name { get; set; }
-
-    public BitmapImage Image { get; set; }/**/
+    public BitmapImage Image { get; set; } = NodeIcons.File;/**/
+    public BitmapImage ImageOverlay { get; set; }/**/
     //public NodeModel() : this(new NodeData(), null) { }
-    public NodeModel(NodeData node) : this(node, null, AvailableNodeImages.none) { }
-    public NodeModel(NodeData node, NodeModel parent, AvailableNodeImages image)
+    public NodeModel(NodeData node) : this(node, null, false) { }
+    public NodeModel(NodeData node, NodeModel parent, bool isFolder)
     {
       data = node;
       Name = node.Name;
       Parent = parent;
       Items = new ObservableCollection<NodeModel>();
       IsExpanded = !(parent != null);
-      switch (image)
-      {
-        case AvailableNodeImages.none:
-          break;
-        case AvailableNodeImages.folder:
-          Image = NodeIcons.Folder;
-          break;
-        case AvailableNodeImages.file:
-          Image = NodeIcons.File;
-          break;
-        case AvailableNodeImages.folderNope:
-          Image = NodeIcons.FolderNope;
-          break;
-        default:
-          break;
-      }
+      IsFolder = isFolder;
+    }
+  }
+  public class EvalData
+  {
+    public ObservableCollection<NodeModel> SourceNodes { get; } = new ObservableCollection<NodeModel>();
+    public ObservableCollection<NodeModel> DestNodes { get; } = new ObservableCollection<NodeModel>();
+    public void Clear()
+    {
+      SourceNodes.Clear();
+      DestNodes.Clear();
+    }
+    public void Add(string SourcePath, string DestPath)
+    {
+      throw new NotImplementedException();
+      //SourceNodes.Add();
+      //DestNodes.Add();
     }
   }
   public enum AvailableNodeImages
@@ -175,6 +243,7 @@ namespace FileManager
     System.Threading.Timer clrHeader;
     static Thread processingThread = null;
     public ObservableCollection<NodeModel> SourceNodes { get; } = new ObservableCollection<NodeModel>();
+    public EvalData Nodes { get; } = new EvalData();
     CancellationTokenSource cts;
     public event PropertyChangedEventHandler PropertyChanged;
     protected void OnPropertyChanged([CallerMemberName] string propertyName = null) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
@@ -405,7 +474,7 @@ namespace FileManager
         {
           cts = new CancellationTokenSource();
           CancellationToken token = cts.Token;
-          _ = PreviewDirectory(txtSource.Text, SourceNodes, token);
+          _ = Preview(txtSource.Text, txtDestination.Text, Nodes, token);
           await Task.Factory.StartNew(() =>
           {
             while (processingThread != null)
@@ -434,29 +503,34 @@ namespace FileManager
 
 
 
-    async Task<string> PreviewDirectory(string dir, ObservableCollection<NodeModel> nodebase, CancellationToken ct)
+    //async Task<string> PreviewDirectory(string dir, ObservableCollection<NodeModel> nodebase, CancellationToken ct)
+    async Task<string> Preview(string sourceDirectory, string destDirectory, EvalData nodebase, CancellationToken ct)
     {
       var tcs = new TaskCompletionSource<string>();
-      if (!string.IsNullOrEmpty(dir) && nodebase != null)
+      if (!string.IsNullOrEmpty(sourceDirectory) && !string.IsNullOrEmpty(destDirectory) && nodebase != null)
       {
+        sourceDirectory = sourceDirectory.TrimEnd('\\') + "\\";
+        destDirectory = destDirectory.TrimEnd('\\') + "\\";
         try
         {
-          //Dispatcher.Invoke(() =>
-          //{
-          nodebase.Clear();
-          //});
-          NodeModel curNode = new NodeModel(new NodeData(dir), null, AvailableNodeImages.folder);
+          Dispatcher.Invoke(() =>
+          {
+            nodebase.Clear();
+          });
+          NodeModel sourceNode = new NodeModel(new NodeData(sourceDirectory), null, true);
+          NodeModel destNode = new NodeModel(new NodeData(destDirectory), null, true) { LinkedNode = sourceNode };
+          sourceNode.LinkedNode = destNode;
           await Task.Factory.StartNew(() =>
           {
             processingThread = Thread.CurrentThread;
             try
             {
-
               Dispatcher.BeginInvoke((Action)(() =>
               {
-                nodebase.Add(curNode);
+                nodebase.SourceNodes.Add(sourceNode);
+                nodebase.DestNodes.Add(destNode);
               }));
-              ProcessDirectory(curNode, ct);
+              ProcessDirectory(sourceNode, destNode, ct);
             }
             catch (Exception)
             {
@@ -477,31 +551,36 @@ namespace FileManager
       tcs.SetResult("Complete");
       return tcs.Task.Result;
     }
-    private void ProcessDirectory(NodeModel curNode, CancellationToken ct)
+    private void ProcessDirectory(NodeModel sourceNode, NodeModel destNode, CancellationToken ct)
     {
-      if (curNode == null) { return; }
+      if (sourceNode == null) { return; }
       if (Recursive)
       {
-        string filespec = curNode.data.Filespec;
+        string filespec = sourceNode.data.Filespec;
+        int lenSourceBase = sourceNode.data.Filespec.Length;
+        int lenDestBase = destNode.data.Filespec.Length;
         try
         {
-          foreach (var f in Directory.GetDirectories(curNode.data.Filespec))
+          foreach (var f in Directory.GetDirectories(sourceNode.data.Filespec))
           {
             filespec = f;
             if (ct.IsCancellationRequested)
             {
               return;
             }
-            var subNode = new NodeModel(new NodeData(f), curNode, AvailableNodeImages.folder);
-            ProcessDirectory(subNode, ct);
+            var subDir = f.Substring(lenSourceBase);
+            var subSourceNode = new NodeModel(new NodeData(f), sourceNode, true);
+            var subDestNode = new NodeModel(new NodeData(destNode.data.Filespec + subDir), destNode, true) { LinkedNode = subSourceNode };
+            subSourceNode.LinkedNode = subDestNode;
+            ProcessDirectory(subSourceNode, subDestNode, ct);
             Dispatcher.BeginInvoke((Action)(() =>
             {
-              curNode.Items.Add(subNode);
+              sourceNode.Items.Add(subSourceNode);
+              destNode.Items.Add(subDestNode);
             }));
             TotalFolders++;
-            //Thread.Sleep(5);
           }
-          foreach (var f in Directory.GetFiles(curNode.data.Filespec))
+          foreach (var f in Directory.GetFiles(sourceNode.data.Filespec))
           {
             filespec = f;
             if (ct.IsCancellationRequested)
@@ -509,29 +588,45 @@ namespace FileManager
               return;
             }
             TotalFiles++;
+
+            var subDir = f.Substring(lenSourceBase);
+            var sourcefileinfo = new FileInfo(f);
+            var destfileinfo = new FileInfo(destNode.data.Filespec + subDir);
+            var subSourceNode = new NodeModel(new NodeData(sourcefileinfo.Name), sourceNode, false);
+            var subDestNode = new NodeModel(new NodeData(destfileinfo.Name), destNode, false) { LinkedNode = sourceNode };
+            subSourceNode.LinkedNode = subDestNode;
+            if (sourcefileinfo.LastWriteTimeUtc == destfileinfo.LastWriteTimeUtc)
+            {
+              subDestNode.UpdateMethod = subSourceNode.UpdateMethod = AvailableUpdateMethods.UpToDate;
+            }
+            else if (sourcefileinfo.LastWriteTimeUtc > destfileinfo.LastWriteTimeUtc)
+            {
+              subDestNode.UpdateMethod = subSourceNode.UpdateMethod = AvailableUpdateMethods.ToDestination;
+            }
+            else if (sourcefileinfo.LastWriteTimeUtc < destfileinfo.LastWriteTimeUtc)
+            {
+              subDestNode.UpdateMethod = subSourceNode.UpdateMethod = AvailableUpdateMethods.ToSource;
+            }
             Dispatcher.BeginInvoke((Action)(() =>
             {
-              curNode.Items.Add(new NodeModel(new NodeData(f), curNode, AvailableNodeImages.file));
+              sourceNode.Items.Add(subSourceNode);
+              destNode.Items.Add(subDestNode);
             }));
-            var fi = new FileInfo(f);
-            TotalSize += fi.Length;
+            TotalSize += sourcefileinfo.Length;
           }
         }
         catch (UnauthorizedAccessException)
         {
-          if (filespec == curNode.data.Filespec)
+          if (filespec == sourceNode.data.Filespec)
           {
             Dispatcher.BeginInvoke((Action)(() =>
             {
-              curNode.Image = NodeIcons.FolderNope;
+              destNode.UpdateMethod = sourceNode.UpdateMethod = AvailableUpdateMethods.Disregard;
             }));
           }
           else
           {
-            Dispatcher.BeginInvoke((Action)(() =>
-            {
-              curNode.Items.Add(new NodeModel(new NodeData(filespec), curNode, AvailableNodeImages.folderNope));
-            }));
+            // need to test this
           }
           TotalFolders++;
         }
@@ -540,8 +635,41 @@ namespace FileManager
           throw;
         }
       }
-      //Thread.Sleep(1);
     }
 
+    private void tree_ScrollChanged(object sender, ScrollChangedEventArgs e)
+    {
+      //if (treeSource.Template.FindName("_tv_scrollviewer_", treeSource) == (ScrollViewer)sender)
+      //{
+      //  ((ScrollViewer)treeDest.Template.FindName("_tv_scrollviewer_", treeDest));
+      //}
+      //else
+      //{
+      //  ((ScrollViewer)treeSource.Template.FindName("_tv_scrollviewer_", treeSource)).ScrollToVerticalOffset(e.VerticalOffset);
+      //}
+      if (sender as System.Windows.Controls.TreeView == treeSource)
+      {
+        ((ScrollViewer)VisualTreeHelper.GetChild(VisualTreeHelper.GetChild(treeDest, 0), 0)).ScrollToVerticalOffset(e.VerticalOffset);
+      }
+      else
+      {
+        ((ScrollViewer)VisualTreeHelper.GetChild(VisualTreeHelper.GetChild(treeSource, 0), 0)).ScrollToVerticalOffset(e.VerticalOffset);
+      }
+    }
+
+    private void TreeViewItem_Expanded(object sender, RoutedEventArgs e)
+    {
+      (((NodeModel)(((TreeViewItem)e.OriginalSource).DataContext)).LinkedNode).IsExpanded = true;
+    }
+
+    private void TreeViewItem_Collapsed(object sender, RoutedEventArgs e)
+    {
+      (((NodeModel)(((TreeViewItem)e.OriginalSource).DataContext)).LinkedNode).IsExpanded = false;
+    }
+
+    private void treeViewItem_Selected(object sender, RoutedEventArgs e)
+    {
+      (((NodeModel)(((TreeViewItem)e.OriginalSource).DataContext)).LinkedNode).IsSelected = true;
+    }
   }
 }
