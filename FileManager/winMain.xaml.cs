@@ -20,9 +20,12 @@ namespace FileManager
   public static class NodeIcons
   {
     public static BitmapImage Folder = new BitmapImage(new Uri(@"pack://application:,,,/include/folderEmpty16.png", UriKind.Absolute));
-    public static BitmapImage Nope = new BitmapImage(new Uri(@"pack://application:,,,/include/nope16.png", UriKind.Absolute));
     public static BitmapImage File = new BitmapImage(new Uri(@"pack://application:,,,/include/document16.png", UriKind.Absolute));
+    public static BitmapImage Nope = new BitmapImage(new Uri(@"pack://application:,,,/include/nope16.png", UriKind.Absolute));
     public static BitmapImage Right = new BitmapImage(new Uri(@"pack://application:,,,/include/right16.png", UriKind.Absolute));
+    public static BitmapImage Left = new BitmapImage(new Uri(@"pack://application:,,,/include/left16.png", UriKind.Absolute));
+    public static BitmapImage UpToDate = new BitmapImage(new Uri(@"pack://application:,,,/include/check16.png", UriKind.Absolute));
+    public static BitmapImage Archive = new BitmapImage(new Uri(@"pack://application:,,,/include/a16.png", UriKind.Absolute));
   }
   public enum AvailableUpdateMethods
   {
@@ -172,15 +175,19 @@ namespace FileManager
           switch (value)
           {
             case AvailableUpdateMethods.None:
-            case AvailableUpdateMethods.UpToDate:
               ImageOverlay = null;
+              break;
+            case AvailableUpdateMethods.UpToDate:
+              ImageOverlay = NodeIcons.UpToDate;
               break;
             case AvailableUpdateMethods.ToDestination:
               ImageOverlay = NodeIcons.Right;
               break;
             case AvailableUpdateMethods.ToSource:
+              ImageOverlay = NodeIcons.Left;
               break;
             case AvailableUpdateMethods.ToArchive:
+              ImageOverlay = NodeIcons.Archive;
               break;
             case AvailableUpdateMethods.Disregard:
               ImageOverlay = NodeIcons.Nope;
@@ -197,8 +204,8 @@ namespace FileManager
     private bool _isSelected = true;
     public bool IsSelected { get => _isSelected; set => SetField(ref _isSelected, value); }
     public string Name { get; set; }
-    public BitmapImage Image { get; set; } = NodeIcons.File;/**/
-    public BitmapImage ImageOverlay { get; set; }/**/
+    public BitmapImage Image { get; private set; } = NodeIcons.File;/**/
+    public BitmapImage ImageOverlay { get; private set; }/**/
     //public NodeModel() : this(new NodeData(), null) { }
     public NodeModel(NodeData node) : this(node, null, false) { }
     public NodeModel(NodeData node, NodeModel parent, bool isFolder)
@@ -277,7 +284,6 @@ namespace FileManager
     public bool Recursive { get { return settings.Default.LastRecursive; } }
     private bool _processCancelled;
     public bool ProcessCancelled { get => _processCancelled; set => SetField(ref _processCancelled, value); }
-
 
     public winMain()
     {
