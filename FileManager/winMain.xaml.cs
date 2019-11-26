@@ -2,7 +2,6 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Collections.Specialized;
 using System.ComponentModel;
 using System.IO;
 using System.Runtime.CompilerServices;
@@ -20,60 +19,61 @@ namespace FileManager
   public static class NodeIcons
   {
     public static BitmapImage Folder = new BitmapImage(new Uri(@"pack://application:,,,/include/folderEmpty16.png", UriKind.Absolute));
+    public static BitmapImage FolderNope = new BitmapImage(new Uri(@"pack://application:,,,/include/folderNope16.png", UriKind.Absolute));
     public static BitmapImage File = new BitmapImage(new Uri(@"pack://application:,,,/include/documentSend16.png", UriKind.Absolute));
   }
   /// <summary>
   /// https://thomaslevesque.com/2009/04/17/wpf-binding-to-an-asynchronous-collection/
   /// </summary>
   /// <typeparam name="T"></typeparam>
-  public class AsyncObservableCollection<T> : ObservableCollection<T>
-  {
-    private SynchronizationContext _synchronizationContext = SynchronizationContext.Current;
+  //public class AsyncObservableCollection<T> : ObservableCollection<T>
+  //{
+  //  private SynchronizationContext _synchronizationContext = SynchronizationContext.Current;
 
-    public AsyncObservableCollection() { }
+  //  public AsyncObservableCollection() { }
 
-    public AsyncObservableCollection(IEnumerable<T> list) : base(list) { }
+  //  public AsyncObservableCollection(IEnumerable<T> list) : base(list) { }
 
-    protected override void OnCollectionChanged(NotifyCollectionChangedEventArgs e)
-    {
-      if (SynchronizationContext.Current == _synchronizationContext)
-      {
-        // Execute the CollectionChanged event on the current thread
-        RaiseCollectionChanged(e);
-      }
-      else
-      {
-        // Raises the CollectionChanged event on the creator thread
-        _synchronizationContext.Send(RaiseCollectionChanged, e);
-      }
-    }
+  //  protected override void OnCollectionChanged(NotifyCollectionChangedEventArgs e)
+  //  {
+  //    if (SynchronizationContext.Current == _synchronizationContext)
+  //    {
+  //      // Execute the CollectionChanged event on the current thread
+  //      RaiseCollectionChanged(e);
+  //    }
+  //    else
+  //    {
+  //      // Raises the CollectionChanged event on the creator thread
+  //      _synchronizationContext.Send(RaiseCollectionChanged, e);
+  //    }
+  //  }
 
-    private void RaiseCollectionChanged(object param)
-    {
-      // We are in the creator thread, call the base implementation directly
-      base.OnCollectionChanged((NotifyCollectionChangedEventArgs)param);
-    }
+  //  private void RaiseCollectionChanged(object param)
+  //  {
+  //    // We are in the creator thread, call the base implementation directly
+  //    base.OnCollectionChanged((NotifyCollectionChangedEventArgs)param);
+  //  }
 
-    protected override void OnPropertyChanged(PropertyChangedEventArgs e)
-    {
-      if (SynchronizationContext.Current == _synchronizationContext)
-      {
-        // Execute the PropertyChanged event on the current thread
-        RaisePropertyChanged(e);
-      }
-      else
-      {
-        // Raises the PropertyChanged event on the creator thread
-        _synchronizationContext.Send(RaisePropertyChanged, e);
-      }
-    }
+  //  protected override void OnPropertyChanged(PropertyChangedEventArgs e)
+  //  {
+  //    if (SynchronizationContext.Current == _synchronizationContext)
+  //    {
+  //      // Execute the PropertyChanged event on the current thread
+  //      RaisePropertyChanged(e);
+  //    }
+  //    else
+  //    {
+  //      // Raises the PropertyChanged event on the creator thread
+  //      _synchronizationContext.Send(RaisePropertyChanged, e);
+  //    }
+  //  }
 
-    private void RaisePropertyChanged(object param)
-    {
-      // We are in the creator thread, call the base implementation directly
-      base.OnPropertyChanged((PropertyChangedEventArgs)param);
-    }
-  }
+  //  private void RaisePropertyChanged(object param)
+  //  {
+  //    // We are in the creator thread, call the base implementation directly
+  //    base.OnPropertyChanged((PropertyChangedEventArgs)param);
+  //  }
+  //}
   public class DirInfo
   {
     DirectoryInfo info { get; set; }
@@ -126,12 +126,12 @@ namespace FileManager
   {
     public NodeData data { get; set; }
     public NodeModel Parent { get; set; }
-    public AsyncObservableCollection<NodeModel> Items { get; set; }
+    public ObservableCollection<NodeModel> Items { get; set; }
     public bool IsExpanded { get; set; } = true;
     public bool IsSelected { get; set; }
     public string Name { get; set; }
 
-    public BitmapImage Image { get; }/**/
+    public BitmapImage Image { get; set; }/**/
     //public NodeModel() : this(new NodeData(), null) { }
     public NodeModel(NodeData node) : this(node, null, AvailableNodeImages.none) { }
     public NodeModel(NodeData node, NodeModel parent, AvailableNodeImages image)
@@ -139,7 +139,7 @@ namespace FileManager
       data = node;
       Name = node.Name;
       Parent = parent;
-      Items = new AsyncObservableCollection<NodeModel>();
+      Items = new ObservableCollection<NodeModel>();
       IsExpanded = !(parent != null);
       switch (image)
       {
@@ -151,6 +151,9 @@ namespace FileManager
         case AvailableNodeImages.file:
           Image = NodeIcons.File;
           break;
+        case AvailableNodeImages.folderNope:
+          Image = NodeIcons.FolderNope;
+          break;
         default:
           break;
       }
@@ -160,7 +163,8 @@ namespace FileManager
   {
     none = 0,
     folder = 1,
-    file = 2
+    file = 2,
+    folderNope = 3,
     //public static BitmapImage Folder = new BitmapImage(new Uri(@"pack://application:,,,/include/folderEmpty.ico", UriKind.Absolute));
   }
   /// <summary>
@@ -170,7 +174,7 @@ namespace FileManager
   {
     System.Threading.Timer clrHeader;
     static Thread processingThread = null;
-    public AsyncObservableCollection<NodeModel> SourceNodes { get; } = new AsyncObservableCollection<NodeModel>();
+    public ObservableCollection<NodeModel> SourceNodes { get; } = new ObservableCollection<NodeModel>();
     CancellationTokenSource cts;
     public event PropertyChangedEventHandler PropertyChanged;
     protected void OnPropertyChanged([CallerMemberName] string propertyName = null) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
@@ -430,14 +434,15 @@ namespace FileManager
 
 
 
-    async Task<string> PreviewDirectory(string dir, AsyncObservableCollection<NodeModel> nodebase, CancellationToken ct)
+    async Task<string> PreviewDirectory(string dir, ObservableCollection<NodeModel> nodebase, CancellationToken ct)
     {
       var tcs = new TaskCompletionSource<string>();
       if (!string.IsNullOrEmpty(dir) && nodebase != null)
       {
         try
         {
-          //Dispatcher.Invoke(() => {
+          //Dispatcher.Invoke(() =>
+          //{
           nodebase.Clear();
           //});
           NodeModel curNode = new NodeModel(new NodeData(dir), null, AvailableNodeImages.folder);
@@ -447,9 +452,10 @@ namespace FileManager
             try
             {
 
-              //Dispatcher.BeginInvoke((Action)(() => {
-              nodebase.Add(curNode);
-              //}));
+              Dispatcher.BeginInvoke((Action)(() =>
+              {
+                nodebase.Add(curNode);
+              }));
               ProcessDirectory(curNode, ct);
             }
             catch (Exception)
@@ -474,53 +480,68 @@ namespace FileManager
     private void ProcessDirectory(NodeModel curNode, CancellationToken ct)
     {
       if (curNode == null) { return; }
-      try
+      if (Recursive)
       {
-        if (Recursive)
+        string filespec = curNode.data.Filespec;
+        try
         {
-          try
+          foreach (var f in Directory.GetDirectories(curNode.data.Filespec))
           {
-            foreach (var f in Directory.GetDirectories(curNode.data.Filespec))
+            filespec = f;
+            if (ct.IsCancellationRequested)
             {
-              if (ct.IsCancellationRequested)
-              {
-                return;
-              }
-              var subNode = new NodeModel(new NodeData(f), curNode, AvailableNodeImages.folder);
-              ProcessDirectory(subNode, ct);
-              //Dispatcher.BeginInvoke((Action)(() =>
-              //{
-              curNode.Items.Add(subNode);
-              //}));
-              TotalFolders++;
-              //Thread.Sleep(5);
+              return;
             }
-
+            var subNode = new NodeModel(new NodeData(f), curNode, AvailableNodeImages.folder);
+            ProcessDirectory(subNode, ct);
+            Dispatcher.BeginInvoke((Action)(() =>
+            {
+              curNode.Items.Add(subNode);
+            }));
+            TotalFolders++;
+            //Thread.Sleep(5);
           }
-          catch (UnauthorizedAccessException)
+          foreach (var f in Directory.GetFiles(curNode.data.Filespec))
           {
+            filespec = f;
+            if (ct.IsCancellationRequested)
+            {
+              return;
+            }
+            TotalFiles++;
+            Dispatcher.BeginInvoke((Action)(() =>
+            {
+              curNode.Items.Add(new NodeModel(new NodeData(f), curNode, AvailableNodeImages.file));
+            }));
+            var fi = new FileInfo(f);
+            TotalSize += fi.Length;
           }
         }
-        foreach (var f in Directory.GetFiles(curNode.data.Filespec))
+        catch (UnauthorizedAccessException)
         {
-          if (ct.IsCancellationRequested)
+          if (filespec == curNode.data.Filespec)
           {
-            return;
+            Dispatcher.BeginInvoke((Action)(() =>
+            {
+              curNode.Image = NodeIcons.FolderNope;
+            }));
           }
-          TotalFiles++;
-          //Dispatcher.BeginInvoke((Action)(() =>
-          //{
-          curNode.Items.Add(new NodeModel(new NodeData(f), curNode, AvailableNodeImages.file));
-          //}));
-          var fi = new FileInfo(f);
-          TotalSize += fi.Length;
+          else
+          {
+            Dispatcher.BeginInvoke((Action)(() =>
+            {
+              curNode.Items.Add(new NodeModel(new NodeData(filespec), curNode, AvailableNodeImages.folderNope));
+            }));
+          }
+          TotalFolders++;
         }
-      }
-      catch (Exception)
-      {
-        throw;
+        catch (Exception)
+        {
+          throw;
+        }
       }
       //Thread.Sleep(1);
     }
+
   }
 }

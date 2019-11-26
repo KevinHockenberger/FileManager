@@ -233,7 +233,7 @@
               <TextBlock Text="{Binding TotalSize, StringFormat='{}{0:#,##0}'}" Margin="0,0,18,0" />
             </StackPanel>
           </Grid>
-          <TreeView x:Name="treeSource" Grid.Row="2" ItemsSource="{Binding SourceNodes, Mode=OneWay}" Background="#FFE0E0E0" Foreground="Black">
+          <TreeView x:Name="treeSource" Grid.Row="2" ItemsSource="{Binding SourceNodes, Mode=OneWay}" Background="#FFE0E0E0" Foreground="Black" VirtualizingStackPanel.IsVirtualizing="True" VirtualizingStackPanel.VirtualizationMode="Recycling" >
             <TreeView.Resources>
               <!--<Style TargetType="{x:Type TreeViewItem}">
                 <Setter Property="IsExpanded" Value="{Binding IsExpanded}"/>
