@@ -21,7 +21,8 @@ namespace FileManager
   {
     public static BitmapImage Folder = new BitmapImage(new Uri(@"pack://application:,,,/include/folderEmpty16.png", UriKind.Absolute));
     public static BitmapImage File = new BitmapImage(new Uri(@"pack://application:,,,/include/document16.png", UriKind.Absolute));
-    public static BitmapImage Nope = new BitmapImage(new Uri(@"pack://application:,,,/include/nope16.png", UriKind.Absolute));
+    public static BitmapImage Disregard = new BitmapImage(new Uri(@"pack://application:,,,/include/cancel16.png", UriKind.Absolute));
+    public static BitmapImage Delete = new BitmapImage(new Uri(@"pack://application:,,,/include/nope16.png", UriKind.Absolute));
     public static BitmapImage Right = new BitmapImage(new Uri(@"pack://application:,,,/include/right16.png", UriKind.Absolute));
     public static BitmapImage Left = new BitmapImage(new Uri(@"pack://application:,,,/include/left16.png", UriKind.Absolute));
     public static BitmapImage UpToDate = new BitmapImage(new Uri(@"pack://application:,,,/include/check16.png", UriKind.Absolute));
@@ -34,8 +35,11 @@ namespace FileManager
     ToDestination = 2,
     ToSource = 3,
     ToArchive = 4,
-    Disregard = 5
+    Disregard = 5,
+    Delete = 6
   }
+
+  // removed the following in favor of xaml in treeviews: VirtualizingStackPanel.IsVirtualizing="True" VirtualizingStackPanel.VirtualizationMode="Recycling"
   /// <summary>
   /// https://thomaslevesque.com/2009/04/17/wpf-binding-to-an-asynchronous-collection/
   /// </summary>
@@ -190,7 +194,10 @@ namespace FileManager
               ImageOverlay = NodeIcons.Archive;
               break;
             case AvailableUpdateMethods.Disregard:
-              ImageOverlay = NodeIcons.Nope;
+              ImageOverlay = NodeIcons.Disregard;
+              break;
+            case AvailableUpdateMethods.Delete:
+              ImageOverlay = NodeIcons.Delete;
               break;
             default:
               break;
@@ -249,7 +256,7 @@ namespace FileManager
   {
     System.Threading.Timer clrHeader;
     static Thread processingThread = null;
-    public ObservableCollection<NodeModel> SourceNodes { get; } = new ObservableCollection<NodeModel>();
+    //public ObservableCollection<NodeModel> SourceNodes { get; } = new ObservableCollection<NodeModel>();
     public EvalData Nodes { get; } = new EvalData();
     CancellationTokenSource cts;
     public event PropertyChangedEventHandler PropertyChanged;
@@ -480,7 +487,7 @@ namespace FileManager
         {
           cts = new CancellationTokenSource();
           CancellationToken token = cts.Token;
-          _ = Preview(txtSource.Text, txtDestination.Text, Nodes, token);
+          _ = Preview(txtSource.Text, txtDestination.Text, Nodes, Recursive, chkArchive.IsChecked == true, int.TryParse(txtArchiveDays.Text, out int i) ? i : settings.Default.LastArchiveDays, token);
           await Task.Factory.StartNew(() =>
           {
             while (processingThread != null)
@@ -510,10 +517,10 @@ namespace FileManager
 
 
     //async Task<string> PreviewDirectory(string dir, ObservableCollection<NodeModel> nodebase, CancellationToken ct)
-    async Task<string> Preview(string sourceDirectory, string destDirectory, EvalData nodebase, CancellationToken ct)
+    async Task<string> Preview(string sourceDirectory, string destDirectory, EvalData nodebase, bool recursive, bool archive, int daysToArchive, CancellationToken ct)
     {
       var tcs = new TaskCompletionSource<string>();
-      if (!string.IsNullOrEmpty(sourceDirectory) && !string.IsNullOrEmpty(destDirectory) && nodebase != null)
+      if (!string.IsNullOrEmpty(sourceDirectory) && !string.IsNullOrEmpty(destDirectory) && nodebase != null && !destDirectory.StartsWith(sourceDirectory) && !sourceDirectory.StartsWith(destDirectory))
       {
         sourceDirectory = sourceDirectory.TrimEnd('\\') + "\\";
         destDirectory = destDirectory.TrimEnd('\\') + "\\";
@@ -536,7 +543,7 @@ namespace FileManager
                 nodebase.SourceNodes.Add(sourceNode);
                 nodebase.DestNodes.Add(destNode);
               }));
-              ProcessDirectory(sourceNode, destNode, ct);
+              ProcessDirectory(sourceNode, destNode, recursive, archive, daysToArchive, ct);
             }
             catch (Exception)
             {
@@ -557,14 +564,14 @@ namespace FileManager
       tcs.SetResult("Complete");
       return tcs.Task.Result;
     }
-    private void ProcessDirectory(NodeModel sourceNode, NodeModel destNode, CancellationToken ct)
+    private void ProcessDirectory(NodeModel sourceNode, NodeModel destNode, bool recursive, bool archive, int daysToArchive, CancellationToken ct)
     {
       if (sourceNode == null) { return; }
-      if (Recursive)
+      string filespec = sourceNode.data.Filespec;
+      int lenSourceBase = sourceNode.data.Filespec.Length;
+      int lenDestBase = destNode.data.Filespec.Length;
+      if (recursive)
       {
-        string filespec = sourceNode.data.Filespec;
-        int lenSourceBase = sourceNode.data.Filespec.Length;
-        int lenDestBase = destNode.data.Filespec.Length;
         try
         {
           foreach (var f in Directory.GetDirectories(sourceNode.data.Filespec))
@@ -578,7 +585,8 @@ namespace FileManager
             var subSourceNode = new NodeModel(new NodeData(f), sourceNode, true);
             var subDestNode = new NodeModel(new NodeData(destNode.data.Filespec + subDir), destNode, true) { LinkedNode = subSourceNode };
             subSourceNode.LinkedNode = subDestNode;
-            ProcessDirectory(subSourceNode, subDestNode, ct);
+            ProcessDirectory(subSourceNode, subDestNode, recursive, archive, daysToArchive, ct);
+            sourceNode.data.TotalDirectories++;
             Dispatcher.BeginInvoke((Action)(() =>
             {
               sourceNode.Items.Add(subSourceNode);
@@ -586,7 +594,24 @@ namespace FileManager
             }));
             TotalFolders++;
           }
-          foreach (var f in Directory.GetFiles(sourceNode.data.Filespec))
+        }
+        catch (UnauthorizedAccessException)
+        {
+          Dispatcher.BeginInvoke((Action)(() =>
+          {
+            destNode.UpdateMethod = sourceNode.UpdateMethod = AvailableUpdateMethods.Disregard;
+          }));
+        }
+        catch (Exception)
+        {
+          //throw;
+        }
+      }
+      try
+      {
+        foreach (var f in Directory.GetFiles(sourceNode.data.Filespec))
+        {
+          try
           {
             filespec = f;
             if (ct.IsCancellationRequested)
@@ -600,8 +625,25 @@ namespace FileManager
             var destfileinfo = new FileInfo(destNode.data.Filespec + subDir);
             var subSourceNode = new NodeModel(new NodeData(sourcefileinfo.Name), sourceNode, false);
             var subDestNode = new NodeModel(new NodeData(destfileinfo.Name), destNode, false) { LinkedNode = sourceNode };
+            sourceNode.data.TotalFiles++;
+            sourceNode.data.TotalData += sourcefileinfo.Length;
             subSourceNode.LinkedNode = subDestNode;
-            if (sourcefileinfo.LastWriteTimeUtc == destfileinfo.LastWriteTimeUtc)
+            subSourceNode.data.Created = sourcefileinfo.CreationTime;
+            subSourceNode.data.Filespec = sourcefileinfo.FullName;
+            subSourceNode.data.LastModified = sourcefileinfo.LastWriteTime;
+            subSourceNode.data.Name = sourcefileinfo.Name;
+            subSourceNode.data.TotalData = sourcefileinfo.Length;
+            subDestNode.data.Created = destfileinfo.CreationTime;
+            subDestNode.data.Filespec = destfileinfo.FullName;
+            subDestNode.data.LastModified = destfileinfo.LastWriteTime;
+            subDestNode.data.Name = destfileinfo.Name;
+            subDestNode.data.TotalData = destfileinfo.Length;
+            if (archive && (DateTime.Now - sourcefileinfo.LastWriteTimeUtc).TotalDays > daysToArchive)
+            { // archive copies to destination and removes the original (regardless of delete original option) if the last write time is older than the days specified
+              subSourceNode.UpdateMethod = AvailableUpdateMethods.Delete;
+              subDestNode.UpdateMethod = AvailableUpdateMethods.ToArchive;
+            }
+            else if (sourcefileinfo.LastWriteTimeUtc == destfileinfo.LastWriteTimeUtc)
             {
               subDestNode.UpdateMethod = subSourceNode.UpdateMethod = AvailableUpdateMethods.UpToDate;
             }
@@ -619,27 +661,30 @@ namespace FileManager
               destNode.Items.Add(subDestNode);
             }));
             TotalSize += sourcefileinfo.Length;
+
           }
-        }
-        catch (UnauthorizedAccessException)
-        {
-          if (filespec == sourceNode.data.Filespec)
+          catch (UnauthorizedAccessException)
           {
             Dispatcher.BeginInvoke((Action)(() =>
             {
               destNode.UpdateMethod = sourceNode.UpdateMethod = AvailableUpdateMethods.Disregard;
             }));
           }
-          else
+          catch (Exception)
           {
-            // need to test this
+            //throw;
           }
-          TotalFolders++;
         }
-        catch (Exception)
-        {
-          throw;
-        }
+
+      }
+      catch (UnauthorizedAccessException)
+      {
+
+      }
+      catch (Exception)
+      {
+
+        throw;
       }
     }
 
@@ -676,6 +721,21 @@ namespace FileManager
     private void treeViewItem_Selected(object sender, RoutedEventArgs e)
     {
       (((NodeModel)(((TreeViewItem)e.OriginalSource).DataContext)).LinkedNode).IsSelected = true;
+    }
+
+    private void TxtSource_TextChanged(object sender, TextChangedEventArgs e)
+    {
+      Nodes.Clear();
+    }
+
+    private void TxtDestination_TextChanged(object sender, TextChangedEventArgs e)
+    {
+      Nodes.Clear();
+    }
+
+    private void TxtLog_TextChanged(object sender, TextChangedEventArgs e)
+    {
+
     }
   }
 }

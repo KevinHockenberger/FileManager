@@ -153,27 +153,27 @@
       </Grid.ColumnDefinitions>
       <Label Content="Source" Grid.Column="0" Grid.Row="0" HorizontalAlignment="Right" VerticalAlignment="Center"/>
       <TextBox x:Name="txtSource" Grid.Column="1" Grid.Row="0" Text="{Binding Source={x:Static properties:Settings.Default},
-                               Path=LastSource}" BorderBrush="#FF3E3E3E"/>
+                               Path=LastSource}" BorderBrush="#FF3E3E3E" TextChanged="TxtSource_TextChanged"/>
       <Button Grid.Column="2" Grid.Row="0" Content="..." Width="26" VerticalAlignment="Stretch" Click="BrowseSource_Click"/>
       <Label Content="Destination" Grid.Column="0" Grid.Row="1" HorizontalAlignment="Right" VerticalAlignment="Center"/>
       <TextBox x:Name="txtDestination" Grid.Column="1" Grid.Row="1" Text="{Binding Source={x:Static properties:Settings.Default},
-                               Path=LastDestination}" BorderBrush="#FF3E3E3E"/>
+                               Path=LastDestination}" BorderBrush="#FF3E3E3E" TextChanged="TxtDestination_TextChanged"/>
       <Button Grid.Column="2" Grid.Row="1" Content="..." Width="26" VerticalAlignment="Stretch" Click="BrowseDestination_Click"/>
       <Label Content="Log" Grid.Column="0" Grid.Row="2" HorizontalAlignment="Right" VerticalAlignment="Center"/>
       <TextBox x:Name="txtLog" Grid.Column="1" Grid.Row="2" Text="{Binding Source={x:Static properties:Settings.Default},
-                               Path=LastLogFile}" BorderBrush="#FF3E3E3E"/>
+                               Path=LastLogFile}" BorderBrush="#FF3E3E3E" TextChanged="TxtLog_TextChanged"/>
       <Button Grid.Column="2" Grid.Row="2" Content="..." Width="26" VerticalAlignment="Stretch" Click="BrowseLog_Click"/>
     </Grid>
     <Grid DockPanel.Dock="Top" >
       <ScrollViewer VerticalScrollBarVisibility="Disabled" HorizontalScrollBarVisibility="Auto">
         <StackPanel Margin="5" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Top">
           <CheckBox x:Name="chkRecursive" Content="recursive" Margin="10,0" VerticalAlignment="Bottom" IsChecked="{Binding Source={x:Static properties:Settings.Default},
-                               Path=LastRecursive}"/>
-          <CheckBox x:Name="chkDeleteOriginal" Content="delete original" Margin="10,0" VerticalAlignment="Bottom" IsChecked="{Binding Source={x:Static properties:Settings.Default},
-                               Path=LastDeleteOriginal}"/>
+                               Path=LastRecursive}" ToolTip="Search subfolders also."/>
+          <CheckBox x:Name="chkDeleteOriginal" Content="delete source" Margin="10,0" VerticalAlignment="Bottom" IsChecked="{Binding Source={x:Static properties:Settings.Default},
+                               Path=LastDeleteOriginal}" ToolTip="Copy files to destination and always remove the source files."/>
           <StackPanel Orientation="Horizontal" Margin="10,0">
             <CheckBox x:Name="chkArchive" Content="archive after" VerticalAlignment="Bottom" IsChecked="{Binding Source={x:Static properties:Settings.Default},
-                               Path=LastArchive}"/>
+                               Path=LastArchive}" ToolTip="Remove the source file if its last modified date is older than the specified number of days."/>
             <TextBox x:Name="txtArchiveDays" Width="40" Margin="5,0" VerticalAlignment="Bottom" Text="{Binding Source={x:Static properties:Settings.Default},
                                Path=LastArchiveDays}" HorizontalContentAlignment="Right"/>
             <Label Content="days" Padding="0" VerticalContentAlignment="Top" VerticalAlignment="Bottom"/>
