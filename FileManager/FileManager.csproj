@@ -140,5 +140,14 @@
   <ItemGroup>
     <Resource Include="include\cancel16.png" />
   </ItemGroup>
+  <ItemGroup>
+    <Resource Include="include\question16.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="include\add16.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="include\updn.png" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

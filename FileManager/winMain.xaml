@@ -74,7 +74,7 @@
           <TextBlock x:Name="txtAppName" Text="File Manager" Margin="5,0" VerticalAlignment="Center" Foreground="White"/>
         </Border>
         <Border Grid.Column="2" BorderThickness="1,0,1,0" BorderBrush="White">
-          <TextBlock x:Name="txtStatus" Text="Message" Margin="5,0" VerticalAlignment="Center" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" Foreground="White"/>
+          <TextBlock x:Name="txtStatus" Text="{Binding Status}" Margin="5,0" VerticalAlignment="Center" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" Foreground="White"/>
         </Border>
         <Border Grid.Column="3">
           <TextBlock x:Name="txtVersion" Text="1.0.0" Margin="5,0" VerticalAlignment="Center" Foreground="White"/>
@@ -116,6 +116,9 @@
                 <ColumnDefinition Width="Auto" />
                 <!-- number of files -->
                 <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <!-- number of files -->
+                <ColumnDefinition Width="Auto" />
                 <!-- seperator -->
                 <ColumnDefinition Width="200" />
                 <!-- progressbar -->
@@ -128,10 +131,14 @@
         </StatusBarItem>
         <Separator Grid.Column="1" />
         <StatusBarItem Grid.Column="2" HorizontalContentAlignment="Right">
-          <TextBlock x:Name="txtFileCount" Text="{Binding FilesOfFiles}"/>
+          <TextBlock x:Name="txtFileCount" Text="{Binding TotalCount, StringFormat='{}{0:#,0}'}"/>
         </StatusBarItem>
-        <Separator Grid.Column="3" />
-        <StatusBarItem Grid.Column="4" VerticalContentAlignment="Stretch" HorizontalContentAlignment="Stretch">
+        <!--<Separator Grid.Column="3" />
+        <StatusBarItem Grid.Column="4" HorizontalContentAlignment="Right">
+          <TextBlock x:Name="txtA" Text="{Binding SelectedSourceNode.Name}"/>
+        </StatusBarItem>-->
+        <Separator Grid.Column="5" />
+        <StatusBarItem Grid.Column="6" VerticalContentAlignment="Stretch" HorizontalContentAlignment="Stretch">
           <Grid>
             <Label Content="-" HorizontalAlignment="Center"/>
             <ProgressBar x:Name="progressbar" Value="{Binding Progress}" Margin="6,2,12,2" />
@@ -150,6 +157,7 @@
         <ColumnDefinition Width="Auto"/>
         <ColumnDefinition/>
         <ColumnDefinition Width="Auto"/>
+        <ColumnDefinition Width="24"/>
       </Grid.ColumnDefinitions>
       <Label Content="Source" Grid.Column="0" Grid.Row="0" HorizontalAlignment="Right" VerticalAlignment="Center"/>
       <TextBox x:Name="txtSource" Grid.Column="1" Grid.Row="0" Text="{Binding Source={x:Static properties:Settings.Default},
@@ -163,6 +171,9 @@
       <TextBox x:Name="txtLog" Grid.Column="1" Grid.Row="2" Text="{Binding Source={x:Static properties:Settings.Default},
                                Path=LastLogFile}" BorderBrush="#FF3E3E3E" TextChanged="TxtLog_TextChanged"/>
       <Button Grid.Column="2" Grid.Row="2" Content="..." Width="26" VerticalAlignment="Stretch" Click="BrowseLog_Click"/>
+      <Button x:Name="btnFlipDirectory" Grid.Column="3" Grid.RowSpan="2" Click="BtnFlipDirectory_Click" >
+        <Image Source="include\updn.png"/>
+      </Button>
     </Grid>
     <Grid DockPanel.Dock="Top" >
       <ScrollViewer VerticalScrollBarVisibility="Disabled" HorizontalScrollBarVisibility="Auto">
@@ -201,7 +212,7 @@
         <GridSplitter Grid.Column="1"  Background="#FF787878" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
         <Grid>
           <Grid.RowDefinitions>
-            <RowDefinition Height="110"/>
+            <RowDefinition Height="62"/>
             <RowDefinition Height="4"/>
             <RowDefinition/>
           </Grid.RowDefinitions>
@@ -211,29 +222,36 @@
               <RowDefinition Height="Auto"/>
               <RowDefinition Height="Auto"/>
               <RowDefinition Height="Auto"/>
+              <RowDefinition Height="Auto"/>
               <RowDefinition/>
             </Grid.RowDefinitions>
             <Grid.ColumnDefinitions>
               <ColumnDefinition Width="Auto"/>
               <ColumnDefinition/>
             </Grid.ColumnDefinitions>
-            <Label Grid.Row="0" Content="folders:" HorizontalAlignment="Right"/>
-            <Label Grid.Row="1" Content="files:" HorizontalAlignment="Right"/>
-            <Label Grid.Row="2" Content="size:" HorizontalAlignment="Right"/>
-            <StackPanel Orientation="Horizontal" Grid.Row="0" Grid.Column="1" >
+            <Label Grid.Row="1" Content="folders:" HorizontalAlignment="Right"/>
+            <Label Grid.Row="2" Content="files:" HorizontalAlignment="Right"/>
+            <Label Grid.Row="3" Content="size:" HorizontalAlignment="Right"/>
+            <StackPanel Orientation="Horizontal" Grid.Row="1" Grid.Column="1" >
               <Image Source="include\X-neon.png" Height="16" Width="16" Visibility="{Binding ProcessCancelled, Converter={StaticResource VisibleIfTrueConverter}}" ToolTip="Process was cancelled. This data is incomplete." Cursor="Help"/>
               <TextBlock Text="{Binding TotalFolders, StringFormat='{}{0:#,##0}'}" />
-            </StackPanel>
-            <StackPanel Orientation="Horizontal" Grid.Row="1" Grid.Column="1">
-              <Image Source="include\X-neon.png" Height="16" Width="16" HorizontalAlignment="Right" Visibility="{Binding ProcessCancelled, Converter={StaticResource VisibleIfTrueConverter}}" ToolTip="Process was cancelled. This data is incomplete." Cursor="Help"/>
-              <TextBlock Text="{Binding TotalFiles, StringFormat='{}{0:#,##0}'}" Margin="0,0,18,0" />
+              <Label Content="/"/>
+              <TextBlock Text="{Binding SelectedSourceNode.data.TotalDirectories, StringFormat='{}{0:#,##0}'}" />
             </StackPanel>
             <StackPanel Orientation="Horizontal" Grid.Row="2" Grid.Column="1">
               <Image Source="include\X-neon.png" Height="16" Width="16" HorizontalAlignment="Right" Visibility="{Binding ProcessCancelled, Converter={StaticResource VisibleIfTrueConverter}}" ToolTip="Process was cancelled. This data is incomplete." Cursor="Help"/>
-              <TextBlock Text="{Binding TotalSize, StringFormat='{}{0:#,##0}'}" Margin="0,0,18,0" />
+              <TextBlock Text="{Binding TotalFiles, StringFormat='{}{0:#,##0}'}" />
+              <Label Content="/"/>
+              <TextBlock Text="{Binding SelectedSourceNode.data.TotalFiles, StringFormat='{}{0:#,##0}'}" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Grid.Row="3" Grid.Column="1">
+              <Image Source="include\X-neon.png" Height="16" Width="16" HorizontalAlignment="Right" Visibility="{Binding ProcessCancelled, Converter={StaticResource VisibleIfTrueConverter}}" ToolTip="Process was cancelled. This data is incomplete." Cursor="Help"/>
+              <TextBlock Text="{Binding TotalSize, StringFormat='{}{0:#,##0}'}" />
+              <Label Content="/"/>
+              <TextBlock Text="{Binding SelectedSourceNode.data.TotalData, StringFormat='{}{0:#,##0}'}" />
             </StackPanel>
           </Grid>
-          <TreeView x:Name="treeSource" Grid.Row="2" ItemsSource="{Binding Nodes.SourceNodes, Mode=OneWay}" Background="#FFE0E0E0" Foreground="Black" TreeViewItem.Expanded="TreeViewItem_Expanded" TreeViewItem.Collapsed="TreeViewItem_Collapsed" VirtualizingStackPanel.IsVirtualizing="True" VirtualizingStackPanel.VirtualizationMode="Recycling" ScrollViewer.ScrollChanged="tree_ScrollChanged" TreeViewItem.Selected="treeViewItem_Selected">
+          <TreeView x:Name="treeSource" Grid.Row="2" ItemsSource="{Binding Nodes.SourceNodes, Mode=OneWay}" Foreground="Black" TreeViewItem.Expanded="TreeViewItem_Expanded" TreeViewItem.Collapsed="TreeViewItem_Collapsed" VirtualizingStackPanel.IsVirtualizing="True" VirtualizingStackPanel.VirtualizationMode="Recycling" ScrollViewer.ScrollChanged="tree_ScrollChanged" TreeViewItem.Selected="treeViewItem_Selected" SelectedItemChanged="TreeSource_SelectedItemChanged">
             <TreeView.Resources>
               <!--<Style TargetType="{x:Type ScrollViewer}">
                 <EventSetter Event="ScrollChanged" Handler="tree_ScrollChanged"/>
@@ -261,7 +279,7 @@
         </Grid>
         <Grid Grid.Column="2">
           <Grid.RowDefinitions>
-            <RowDefinition Height="110"/>
+            <RowDefinition Height="62"/>
             <RowDefinition Height="4"/>
             <RowDefinition/>
           </Grid.RowDefinitions>
@@ -271,26 +289,19 @@
               <RowDefinition Height="Auto"/>
               <RowDefinition Height="Auto"/>
               <RowDefinition Height="Auto"/>
-              <RowDefinition Height="Auto"/>
-              <RowDefinition Height="Auto"/>
               <RowDefinition/>
             </Grid.RowDefinitions>
             <Grid.ColumnDefinitions>
               <ColumnDefinition Width="Auto"/>
               <ColumnDefinition/>
             </Grid.ColumnDefinitions>
-            <Label Grid.Row="0" Content="path:" HorizontalAlignment="Right"/>
-            <Label Grid.Row="1" Content="folders:" HorizontalAlignment="Right"/>
-            <Label Grid.Row="2" Content="files:" HorizontalAlignment="Right"/>
-            <Label Grid.Row="3" Content="size:" HorizontalAlignment="Right"/>
-            <Label Grid.Row="4" Content="modified:" HorizontalAlignment="Right"/>
-            <TextBlock Grid.Row="0" Grid.Column="1" Text="..." />
-            <TextBlock Grid.Row="1" Grid.Column="1" Text="..." />
-            <TextBlock Grid.Row="2" Grid.Column="1" Text="..." />
-            <TextBlock Grid.Row="3" Grid.Column="1" Text="..." />
-            <TextBlock Grid.Row="4" Grid.Column="1" Text="..." />
+            <Label Grid.Row="1" Content="size:" HorizontalAlignment="Right"/>
+            <Label Grid.Row="2" Content="modified:" HorizontalAlignment="Right"/>
+            <TextBox Grid.ColumnSpan="2" Text="{Binding SelectedDestNode.data.Filespec}" Background="Transparent" Foreground="White" BorderBrush="{x:Null}" IsReadOnly="True"/>
+            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding SelectedDestNode.data.TotalData}" />
+            <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding SelectedDestNode.data.LastModified}" />
           </Grid>
-          <TreeView x:Name="treeDest" Grid.Row="2" ItemsSource="{Binding Nodes.DestNodes, Mode=OneWay}" Background="#FFE0E0E0" Foreground="Black" TreeViewItem.Expanded="TreeViewItem_Expanded" TreeViewItem.Collapsed="TreeViewItem_Collapsed" VirtualizingStackPanel.IsVirtualizing="True" VirtualizingStackPanel.VirtualizationMode="Recycling" ScrollViewer.ScrollChanged="tree_ScrollChanged" TreeViewItem.Selected="treeViewItem_Selected">
+          <TreeView x:Name="treeDest" Grid.Row="2" ItemsSource="{Binding Nodes.DestNodes, Mode=OneWay}" Foreground="Black" TreeViewItem.Expanded="TreeViewItem_Expanded" TreeViewItem.Collapsed="TreeViewItem_Collapsed" VirtualizingStackPanel.IsVirtualizing="True" VirtualizingStackPanel.VirtualizationMode="Recycling" ScrollViewer.ScrollChanged="tree_ScrollChanged" TreeViewItem.Selected="treeViewItem_Selected" SelectedItemChanged="TreeDest_SelectedItemChanged">
             <TreeView.Resources>
               <!--<Style TargetType="{x:Type ScrollViewer}">
                 <EventSetter Event="ScrollChanged" Handler="tree_ScrollChanged"/>
@@ -301,8 +312,8 @@
               </Style>
               <HierarchicalDataTemplate DataType="{x:Type local:NodeModel}" ItemsSource="{Binding Items}">
                 <StackPanel Orientation="Horizontal">
-                  <Grid Width="16" Height="16" Margin="0,0,5,0">
-                    <Image Source="{Binding Image}"/>
+                  <Grid Width="16" Height="16" Margin="0,0,5,0" >
+                    <Image Source="{Binding Image}" />
                     <Image Source="{Binding ImageOverlay}"/>
                   </Grid>
                   <TextBlock Text="{Binding Name}"/>
