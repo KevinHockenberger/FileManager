@@ -1,0 +1,47 @@
+﻿<Window x:Class="FileManager.winConfirmStart"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:FileManager"
+        mc:Ignorable="d"
+        Title="winConfirmStart" Height="208" Width="511.259" BorderThickness="2" ResizeMode="CanResizeWithGrip" Icon="include/folderEmpty.ico" Background="#FF464646" Foreground="White" FontFamily="Arial" FontSize="14" WindowStyle="None" WindowStartupLocation="CenterOwner">
+  <DockPanel>
+    <Border DockPanel.Dock="Top" BorderBrush="Black" BorderThickness="0,0,0,1" MouseDown="_MouseDown">
+      <Grid>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="Auto"/>
+          <ColumnDefinition/>
+          <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+        <Image Source="include\folderEmpty.ico" Width="18" Height="18" Margin="5,0"/>
+        <Border Grid.Column="1">
+          <TextBlock x:Name="txtTitle" Text="Confirm copy folders and files." Margin="5,0" VerticalAlignment="Center" Foreground="White"/>
+        </Border>
+        <Button x:Name="btnClose" Width="24" Height="24" Grid.Column="6" BorderThickness="1" VerticalAlignment="Top" Click="BtnClose_Click" Background="Transparent" BorderBrush="#FF686868">
+          <Image Source="include\x-neon.png" Width="18" Height="18"/>
+        </Button>
+      </Grid>
+    </Border>
+    <Border DockPanel.Dock="Bottom">
+      <Grid>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition/>
+          <ColumnDefinition/>
+        </Grid.ColumnDefinitions>
+        <Button x:Name="btnOk" Background="Transparent" Click="BtnOk_Click">
+          <StackPanel>
+            <Image Width="32" Height="32" Source="include\check.png" />
+            <TextBlock TextWrapping="Wrap" Foreground="White" Margin="0,5" Text="Confirm copy / create / overwrite destination folder with source folder data."/>
+          </StackPanel>
+        </Button>
+        <Button x:Name="btnCancel" Background="Transparent" Grid.Column="1" Click="BtnCancel_Click">
+          <StackPanel>
+            <Image Width="32" Height="32" Source="include\cancel.png" />
+            <TextBlock TextWrapping="Wrap" Foreground="White" Margin="0,5" Text="Not yet... Do nothing."/>
+          </StackPanel>
+        </Button>
+      </Grid>
+    </Border>
+  </DockPanel>
+</Window>

@@ -40,7 +40,7 @@ namespace FileManager
     Disregard = 5,
     Delete = 6,
     Question = 7,
-    Add=8
+    Add = 8
   }
 
   // removed the following in favor of xaml in treeviews: VirtualizingStackPanel.IsVirtualizing="True" VirtualizingStackPanel.VirtualizationMode="Recycling"
@@ -142,7 +142,6 @@ namespace FileManager
       Name = Path.GetFileName(filespec);
       if (string.IsNullOrEmpty(Name)) { Name = filespec; }
     }
-
   }
   public class NodeModel : INotifyPropertyChanged
   {
@@ -223,7 +222,6 @@ namespace FileManager
     public string Name { get; set; }
     public BitmapImage Image { get; private set; } = NodeIcons.File;/**/
     public BitmapImage ImageOverlay { get; private set; }/**/
-    //public NodeModel() : this(new NodeData(), null) { }
     public NodeModel(NodeData node) : this(node, null, false) { }
     public NodeModel(NodeData node, NodeModel parent, bool isFolder)
     {
@@ -259,14 +257,11 @@ namespace FileManager
     folderNope = 3,
     //public static BitmapImage Folder = new BitmapImage(new Uri(@"pack://application:,,,/include/folderEmpty.ico", UriKind.Absolute));
   }
-  /// <summary>
-  /// Interaction logic for MainWindow.xaml
-  /// </summary>
   public partial class winMain : Window, INotifyPropertyChanged
   {
     System.Threading.Timer clrHeader;
+    System.Threading.Timer SourceChanging;
     static Thread processingThread = null;
-    //public ObservableCollection<NodeModel> SourceNodes { get; } = new ObservableCollection<NodeModel>();
     public EvalData Nodes { get; } = new EvalData();
     CancellationTokenSource cts;
     public event PropertyChangedEventHandler PropertyChanged;
@@ -290,14 +285,6 @@ namespace FileManager
     public string FilesOfFiles { get => _filesOfFiles; set => SetField(ref _filesOfFiles, value); }
     private int _progress;
     public int Progress { get => _progress; set => SetField(ref _progress, value); }
-    //private bool _recursive;
-    //public bool Recursive { get => _recursive; set => SetField(ref _recursive, value); }
-    //private bool _deleteOriginal;
-    //public bool DeleteOriginal { get => _deleteOriginal; set => SetField(ref _deleteOriginal, value); }
-    //private bool _archive;
-    //public bool Archive { get => _archive; set => SetField(ref _archive, value); }
-    //private int _archiveDays;
-    //public int ArchiveDays { get => _archiveDays; set => SetField(ref _archiveDays, value); }
     public bool Recursive { get { return settings.Default.LastRecursive; } }
     private bool _processCancelled;
     public bool ProcessCancelled { get => _processCancelled; set => SetField(ref _processCancelled, value); }
@@ -307,7 +294,6 @@ namespace FileManager
     public NodeModel SelectedDestNode { get => _selectedDestNode; set => SetField(ref _selectedDestNode, value); }
     private int _totalCount;
     public int TotalCount { get => _totalCount; set => SetField(ref _totalCount, value); }
-
     public winMain()
     {
       try
@@ -321,7 +307,6 @@ namespace FileManager
         throw;
       }
     }
-
     private void BtnClose_Click(object sender, RoutedEventArgs e)
     {
       this.Close();
@@ -420,8 +405,8 @@ namespace FileManager
       txtVersion.Text = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString();
       ClearStatus();
       ApplySettings();
-      progressbar.Visibility = Visibility.Hidden; txtProgress.Visibility = Visibility.Hidden;
-
+      ResetForm();
+      GetTotalCount(null);
     }
     private void BrowseSource_Click(object sender, RoutedEventArgs e)
     {
@@ -461,13 +446,136 @@ namespace FileManager
     }
     private void BtnPreview_Click(object sender, RoutedEventArgs e)
     {
-      Progress = 0; TotalCount = 0;
-      progressbar.Visibility = Visibility.Visible; txtProgress.Visibility = Visibility.Visible;
-      _ = PreviewAsync();
+      ResetFormForStart();
+      _ = ProcessAsync(true);
     }
     private void BtnStart_Click(object sender, RoutedEventArgs e)
     {
-      Progress++;
+      winConfirmStart d = new winConfirmStart() { Owner = this };
+      d.ShowDialog();
+      if (d.DialogResult == true)
+      {
+        ResetFormForStart();
+        _ = ProcessAsync(false);
+      }
+    }
+    private void tree_ScrollChanged(object sender, ScrollChangedEventArgs e)
+    {
+      //if (treeSource.Template.FindName("_tv_scrollviewer_", treeSource) == (ScrollViewer)sender)
+      //{
+      //  ((ScrollViewer)treeDest.Template.FindName("_tv_scrollviewer_", treeDest));
+      //}
+      //else
+      //{
+      //  ((ScrollViewer)treeSource.Template.FindName("_tv_scrollviewer_", treeSource)).ScrollToVerticalOffset(e.VerticalOffset);
+      //}
+      if (sender as System.Windows.Controls.TreeView == treeSource)
+      {
+        ((ScrollViewer)VisualTreeHelper.GetChild(VisualTreeHelper.GetChild(treeDest, 0), 0)).ScrollToVerticalOffset(e.VerticalOffset);
+      }
+      else
+      {
+        ((ScrollViewer)VisualTreeHelper.GetChild(VisualTreeHelper.GetChild(treeSource, 0), 0)).ScrollToVerticalOffset(e.VerticalOffset);
+      }
+    }
+    private void TreeViewItem_Expanded(object sender, RoutedEventArgs e)
+    {
+      (((NodeModel)(((TreeViewItem)e.OriginalSource).DataContext)).LinkedNode).IsExpanded = true;
+    }
+    private void TreeViewItem_Collapsed(object sender, RoutedEventArgs e)
+    {
+      (((NodeModel)(((TreeViewItem)e.OriginalSource).DataContext)).LinkedNode).IsExpanded = false;
+    }
+    private void treeViewItem_Selected(object sender, RoutedEventArgs e)
+    {
+      (((NodeModel)(((TreeViewItem)e.OriginalSource).DataContext)).LinkedNode).IsSelected = true;
+    }
+    private void GetTotalCount(object o)
+    {
+      Dispatcher.Invoke(() =>
+      {
+        string s = txtSource.Text;
+        if (Directory.Exists(s))
+        {
+          try
+          {
+            _ = Task.Factory.StartNew(() =>
+            {
+              try
+              {
+                TotalCount = Directory.GetFiles(s, "*", SearchOption.AllDirectories).Length;
+              }
+              catch (Exception)
+              {
+                Dispatcher.BeginInvoke((Action)(() => { UpdateStatus("Cannot determine number of files.", new SolidColorBrush(Colors.Transparent), new SolidColorBrush(Colors.Red)); }));
+                TotalCount = 0;
+              }
+            });
+            SourceChanging.Dispose();
+            SourceChanging = null;
+          }
+          catch (Exception)
+          {
+          }
+        }
+      });
+    }
+    private void TxtSource_TextChanged(object sender, TextChangedEventArgs e)
+    {
+      ResetForm();
+      TotalCount = 0;
+      if (SourceChanging == null)
+      {
+        SourceChanging = new System.Threading.Timer(new System.Threading.TimerCallback(GetTotalCount), null, 5000, System.Threading.Timeout.Infinite);
+      }
+      else
+      {
+        SourceChanging.Change(5000, System.Threading.Timeout.Infinite);
+      }
+    }
+    private void TxtDestination_TextChanged(object sender, TextChangedEventArgs e)
+    {
+      ResetForm();
+    }
+    private void ResetForm()
+    {
+      Progress = 0;
+      Nodes.Clear();
+      progressbar.Visibility = Visibility.Hidden;
+      txtProgress.Visibility = Visibility.Hidden;
+      TotalFolders = 0;
+      TotalFiles = 0;
+      TotalSize = 0;
+      //TotalCount = 0;
+    }
+    private void ResetFormForStart()
+    {
+      Progress = 0;
+      Nodes.Clear();
+      TotalFolders = 0;
+      TotalFiles = 0;
+      TotalSize = 0;
+      //TotalCount = 0;
+      progressbar.Visibility = Visibility.Visible;
+      txtProgress.Visibility = Visibility.Visible;
+    }
+    private void TxtLog_TextChanged(object sender, TextChangedEventArgs e)
+    {
+
+    }
+    private void BtnFlipDirectory_Click(object sender, RoutedEventArgs e)
+    {
+      var source = txtSource.Text;
+      txtSource.Text = txtDestination.Text;
+      txtDestination.Text = source;
+    }
+    private void TreeSource_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
+    {
+      SelectedSourceNode = e.NewValue as NodeModel;
+    }
+    private void TreeDest_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
+    {
+      SelectedDestNode = e.NewValue as NodeModel;
     }
     private bool ToggleProcessing()
     {
@@ -491,127 +599,276 @@ namespace FileManager
     private void CompleteProcessing()
     {
       Progress = 100;
-      Dispatcher.Invoke(() => { btnPreview.Content = "preview";});
+      Dispatcher.Invoke(() => { btnPreview.Content = "preview"; UpdateStatus("Processing complete.", null, null); });
     }
     private void AbortProcessing()
     {
       Progress = 0;
       ProcessCancelled = true;
-      Dispatcher.Invoke(() => { btnPreview.Content = "preview"; });
+      Dispatcher.Invoke(() => { btnPreview.Content = "preview"; UpdateStatus("Processing aborting.", null, null); });
     }
-    private async Task PreviewAsync()
-    {
-      try
-      {
-        if (!ToggleProcessing()) { return; }
-        string s = txtSource.Text;
-        if (Directory.Exists(s))
-        {
-          try
-          {
-            //TotalCount = Directory.GetFiles(txtSource.Text, "*", SearchOption.AllDirectories).Length;
-            _ = Task.Factory.StartNew(() => 
-            {
-              try
-              {
-                TotalCount = Directory.GetFiles(s, "*", SearchOption.AllDirectories).Length;
-              }
-              catch (Exception)
-              {
-                Dispatcher.Invoke(() => { UpdateStatus("Cannot determine number of files.", new SolidColorBrush(Colors.Transparent), new SolidColorBrush(Colors.Red)); });
-                TotalCount = 0;
-              }
-            });
+    //private async Task PreviewAsync()
+    //{
+    //  try
+    //  {
+    //    if (!ToggleProcessing()) { return; }
+    //    string s = txtSource.Text;
+    //    if (Directory.Exists(s))
+    //    {
+    //      cts = new CancellationTokenSource();
+    //      CancellationToken token = cts.Token;
+    //      _ = Preview(s, txtDestination.Text, Nodes, Recursive, chkArchive.IsChecked == true, int.TryParse(txtArchiveDays.Text, out int i) ? i : settings.Default.LastArchiveDays, token);
+    //      await Task.Factory.StartNew(() =>
+    //      {
+    //        while (processingThread != null)
+    //        {
+    //          if (token.IsCancellationRequested)
+    //          {
+    //            processingThread.Abort();
+    //            processingThread = null;
+    //            cts = null;
+    //            AbortProcessing();
+    //            return;
+    //          }
+    //        }
+    //      });
+    //      CompleteProcessing();
+    //    }
+    //  }
+    //  catch (Exception ex)
+    //  {
+    //    UpdateStatus(ex.Message);
+    //  }
+    //}
+    //async Task<string> Preview(string sourceDirectory, string destDirectory, EvalData nodebase, bool recursive, bool archive, int daysToArchive, CancellationToken ct)
+    //{
+    //  var tcs = new TaskCompletionSource<string>();
+    //  if (!string.IsNullOrEmpty(sourceDirectory) && !string.IsNullOrEmpty(destDirectory) && nodebase != null && !destDirectory.StartsWith(sourceDirectory) && !sourceDirectory.StartsWith(destDirectory))
+    //  {
+    //    sourceDirectory = sourceDirectory.TrimEnd('\\') + "\\";
+    //    destDirectory = destDirectory.TrimEnd('\\') + "\\";
+    //    try
+    //    {
+    //      Dispatcher.Invoke(() =>
+    //      {
+    //        nodebase.Clear();
+    //      });
+    //      NodeModel sourceNode = new NodeModel(new NodeData(sourceDirectory), null, true);
+    //      NodeModel destNode = new NodeModel(new NodeData(destDirectory), null, true) { LinkedNode = sourceNode };
+    //      sourceNode.LinkedNode = destNode;
+    //      await Task.Factory.StartNew(() =>
+    //      {
+    //        processingThread = Thread.CurrentThread;
+    //        try
+    //        {
+    //          Dispatcher.BeginInvoke((Action)(() =>
+    //          {
+    //            nodebase.SourceNodes.Add(sourceNode);
+    //            nodebase.DestNodes.Add(destNode);
+    //          }));
+    //          PreviewDirectory(sourceNode, destNode, recursive, archive, daysToArchive, ct);
 
-          }
-          catch (Exception)
-          {
-          }
+    //        }
+    //        catch (Exception)
+    //        {
+    //          throw;
+    //        }
+    //      });
+    //    }
+    //    catch (Exception ex)
+    //    {
+    //      processingThread = null;
+    //      cts = null;
+    //      tcs.SetResult("Error : " + ex.Message);
+    //      return tcs.Task.Result;
+    //    }
+    //  }
+    //  else
+    //  {
+    //    UpdateStatus("Unable to process folders as source cannot contain destination and vice versa.");
+    //  }
+    //  processingThread = null;
+    //  cts = null;
+    //  tcs.SetResult("Complete");
+    //  return tcs.Task.Result;
+    //}
+    //private void PreviewDirectory(NodeModel sourceNode, NodeModel destNode, bool recursive, bool archive, int daysToArchive, CancellationToken ct)
+    //{
+    //  if (processingThread == null || sourceNode == null) { return; }
+    //  string filespec = sourceNode.data.Filespec;
+    //  int lenSourceBase = sourceNode.data.Filespec.Length;
+    //  int lenDestBase = destNode.data.Filespec.Length;
+    //  if (recursive)
+    //  {
+    //    try
+    //    {
+    //      foreach (var f in Directory.GetDirectories(sourceNode.data.Filespec))
+    //      {
+    //        filespec = f;
+    //        if (ct.IsCancellationRequested)
+    //        {
+    //          return;
+    //        }
+    //        var subDir = f.Substring(lenSourceBase);
+    //        var subSourceNode = new NodeModel(new NodeData(f), sourceNode, true);
+    //        var subDestNode = new NodeModel(new NodeData(destNode.data.Filespec + subDir), destNode, true) { LinkedNode = subSourceNode };
+    //        subSourceNode.LinkedNode = subDestNode;
+    //        PreviewDirectory(subSourceNode, subDestNode, recursive, archive, daysToArchive, ct);
+    //        sourceNode.data.TotalDirectories++;
+    //        Dispatcher.BeginInvoke((Action)(() =>
+    //        {
+    //          sourceNode.Items.Add(subSourceNode);
+    //          destNode.Items.Add(subDestNode);
+    //        }));
+    //        TotalFolders++;
+    //      }
+    //    }
+    //    catch (UnauthorizedAccessException)
+    //    {
+    //      Dispatcher.BeginInvoke((Action)(() =>
+    //      {
+    //        destNode.UpdateMethod = sourceNode.UpdateMethod = AvailableUpdateMethods.Disregard;
+    //      }));
+    //    }
+    //    catch (Exception)
+    //    {
+    //      //throw;
+    //    }
+    //  }
+    //  try
+    //  {
+    //    foreach (var f in Directory.GetFiles(sourceNode.data.Filespec))
+    //    {
+    //      try
+    //      {
+    //        filespec = f;
+    //        if (ct.IsCancellationRequested)
+    //        {
+    //          return;
+    //        }
+    //        TotalFiles++;
+    //        if (TotalCount > 0)
+    //        {
+    //          Progress = (int)(((decimal)TotalFiles / TotalCount) * 100);
+    //        }
+    //        var subDir = f.Substring(lenSourceBase);
+    //        var sourcefileinfo = new FileInfo(f);
+    //        var destFilespec = destNode.data.Filespec + subDir;
+    //        var subSourceNode = new NodeModel(new NodeData(sourcefileinfo.Name), sourceNode, false);
+    //        subSourceNode.data.Created = sourcefileinfo.CreationTime;
+    //        subSourceNode.data.Filespec = sourcefileinfo.FullName;
+    //        subSourceNode.data.LastModified = sourcefileinfo.LastWriteTime;
+    //        subSourceNode.data.Name = sourcefileinfo.Name;
+    //        subSourceNode.data.TotalData = sourcefileinfo.Length;
+    //        sourceNode.data.TotalFiles++;
+    //        sourceNode.data.TotalData += sourcefileinfo.Length;
+    //        NodeModel subDestNode = null;
+    //        if (File.Exists(destFilespec))
+    //        {
+    //          var destfileinfo = new FileInfo(destFilespec);
+    //          subDestNode = new NodeModel(new NodeData(destfileinfo.Name), destNode, false) { LinkedNode = subSourceNode };
+    //          subSourceNode.LinkedNode = subDestNode;
+    //          subDestNode.data.Created = destfileinfo.CreationTime;
+    //          subDestNode.data.Filespec = destfileinfo.FullName;
+    //          subDestNode.data.LastModified = destfileinfo.LastWriteTime;
+    //          subDestNode.data.Name = destfileinfo.Name;
+    //          subDestNode.data.TotalData = destfileinfo.Length;
+    //          if (archive && (DateTime.Now - sourcefileinfo.LastWriteTimeUtc).TotalDays > daysToArchive)
+    //          { // archive copies to destination and removes the original (regardless of delete original option) if the last write time is older than the days specified
+    //            subSourceNode.UpdateMethod = AvailableUpdateMethods.Delete;
+    //            subDestNode.UpdateMethod = AvailableUpdateMethods.ToArchive;
+    //          }
+    //          else if (sourcefileinfo.LastWriteTimeUtc == destfileinfo.LastWriteTimeUtc)
+    //          {
+    //            subDestNode.UpdateMethod = subSourceNode.UpdateMethod = AvailableUpdateMethods.UpToDate;
+    //          }
+    //          else if (sourcefileinfo.LastWriteTimeUtc > destfileinfo.LastWriteTimeUtc)
+    //          {
+    //            subDestNode.UpdateMethod = subSourceNode.UpdateMethod = AvailableUpdateMethods.ToDestination;
+    //          }
+    //          else if (sourcefileinfo.LastWriteTimeUtc < destfileinfo.LastWriteTimeUtc)
+    //          {
+    //            subDestNode.UpdateMethod = subSourceNode.UpdateMethod = AvailableUpdateMethods.ToSource;
+    //          }
 
-          cts = new CancellationTokenSource();
-          CancellationToken token = cts.Token;
-          _ = Preview(s, txtDestination.Text, Nodes, Recursive, chkArchive.IsChecked == true, int.TryParse(txtArchiveDays.Text, out int i) ? i : settings.Default.LastArchiveDays, token);
-          await Task.Factory.StartNew(() =>
-          {
-            while (processingThread != null)
-            {
-              if (token.IsCancellationRequested)
-              {
-                processingThread.Abort();
-                processingThread = null;
-                cts = null;
-                AbortProcessing();
-                return;
-              }
-            }
-          });
-          CompleteProcessing();
-        }
-      }
-      catch (Exception ex)
-      {
-        UpdateStatus ( ex.Message);
-      }
-    }
+    //        }
+    //        else
+    //        {
+    //          // destination file does not exist
+    //          subDestNode = new NodeModel(new NodeData(Path.GetFileName(destFilespec)), destNode, false) { LinkedNode = subSourceNode };
+    //          subSourceNode.LinkedNode = subDestNode;
+    //          subDestNode.data.Created = DateTime.Now;
+    //          subDestNode.data.Filespec = destFilespec;
+    //          subDestNode.data.LastModified = DateTime.Now;
+    //          subDestNode.data.Name = Path.GetFileName(destFilespec);
+    //          subSourceNode.UpdateMethod = AvailableUpdateMethods.ToDestination;
+    //          subDestNode.UpdateMethod = AvailableUpdateMethods.Add;
+    //        }
+    //        Dispatcher.BeginInvoke((Action)(() =>
+    //        {
+    //          sourceNode.Items.Add(subSourceNode);
+    //          destNode.Items.Add(subDestNode);
+    //        }));
+    //        TotalSize += sourcefileinfo.Length;
 
+    //      }
+    //      catch (UnauthorizedAccessException)
+    //      {
+    //        Dispatcher.BeginInvoke((Action)(() =>
+    //        {
+    //          destNode.UpdateMethod = sourceNode.UpdateMethod = AvailableUpdateMethods.Disregard;
+    //        }));
+    //      }
+    //      catch (Exception)
+    //      {
+    //        //throw;
+    //      }
+    //    }
+    //    if (Directory.Exists(destNode.data.Filespec))
+    //    {
+    //      // iterate through the destination folder to find existing files only in destination folder
 
-
-
-
-    //async Task<string> PreviewDirectory(string dir, ObservableCollection<NodeModel> nodebase, CancellationToken ct)
-    async Task<string> Preview(string sourceDirectory, string destDirectory, EvalData nodebase, bool recursive, bool archive, int daysToArchive, CancellationToken ct)
-    {
-      var tcs = new TaskCompletionSource<string>();
-      if (!string.IsNullOrEmpty(sourceDirectory) && !string.IsNullOrEmpty(destDirectory) && nodebase != null && !destDirectory.StartsWith(sourceDirectory) && !sourceDirectory.StartsWith(destDirectory))
-      {
-        sourceDirectory = sourceDirectory.TrimEnd('\\') + "\\";
-        destDirectory = destDirectory.TrimEnd('\\') + "\\";
-        try
-        {
-          Dispatcher.Invoke(() =>
-          {
-            nodebase.Clear();
-          });
-          NodeModel sourceNode = new NodeModel(new NodeData(sourceDirectory), null, true);
-          NodeModel destNode = new NodeModel(new NodeData(destDirectory), null, true) { LinkedNode = sourceNode };
-          sourceNode.LinkedNode = destNode;
-          await Task.Factory.StartNew(() =>
-          {
-            processingThread = Thread.CurrentThread;
-            try
-            {
-              Dispatcher.BeginInvoke((Action)(() =>
-              {
-                nodebase.SourceNodes.Add(sourceNode);
-                nodebase.DestNodes.Add(destNode);
-              }));
-              ProcessDirectory(sourceNode, destNode, recursive, archive, daysToArchive, ct);
-
-            }
-            catch (Exception)
-            {
-              throw;
-            }
-          });
-        }
-        catch (Exception ex)
-        {
-          processingThread = null;
-          cts = null;
-          tcs.SetResult("Error : " + ex.Message);
-          return tcs.Task.Result;
-        }
-      }
-      else
-      {
-        UpdateStatus( "Unable to process folders as source cannot contain destination and vice versa.");
-      }
-      processingThread = null;
-      cts = null;
-      tcs.SetResult("Complete");
-      return tcs.Task.Result;
-    }
-    private void ProcessDirectory(NodeModel sourceNode, NodeModel destNode, bool recursive, bool archive, int daysToArchive, CancellationToken ct)
+    //      bool found;
+    //      foreach (var destfile in Directory.GetFiles(destNode.data.Filespec))
+    //      {
+    //        found = false;
+    //        var subDir = destfile.Substring(lenDestBase);
+    //        foreach (var sourcefile in Directory.GetFiles(sourceNode.data.Filespec))
+    //        {
+    //          if (Path.GetFileName(sourcefile) == Path.GetFileName(destfile))
+    //          {
+    //            found = true;
+    //            break;
+    //          }
+    //        }
+    //        if (!found)
+    //        {
+    //          var subSourceNode = new NodeModel(new NodeData(sourceNode.data.Filespec + subDir), sourceNode, false) { UpdateMethod = AvailableUpdateMethods.Disregard };
+    //          var destFileInfo = new FileInfo(destfile);
+    //          var subDestNode = new NodeModel(new NodeData(destfile), destNode, false) { LinkedNode = subSourceNode, UpdateMethod = AvailableUpdateMethods.Question };
+    //          subDestNode.data.TotalData = destFileInfo.Length;
+    //          subDestNode.data.Created = destFileInfo.CreationTime;
+    //          subDestNode.data.LastModified = destFileInfo.LastWriteTime;
+    //          subSourceNode.LinkedNode = subDestNode;
+    //          RecursiveSetParentIcon(subDestNode, AvailableUpdateMethods.Question);
+    //          Dispatcher.BeginInvoke((Action)(() =>
+    //          {
+    //            sourceNode.Items.Add(subSourceNode);
+    //            destNode.Items.Add(subDestNode);
+    //          }));
+    //        }
+    //      }
+    //    }
+    //  }
+    //  catch (UnauthorizedAccessException)
+    //  {
+    //  }
+    //  catch (Exception)
+    //  {
+    //    throw;
+    //  }
+    //}
+    private void ProcessDirectory(bool preview, NodeModel sourceNode, NodeModel destNode, bool recursive, bool archive, int daysToArchive, CancellationToken ct)
     {
       if (processingThread == null || sourceNode == null) { return; }
       string filespec = sourceNode.data.Filespec;
@@ -631,8 +888,12 @@ namespace FileManager
             var subDir = f.Substring(lenSourceBase);
             var subSourceNode = new NodeModel(new NodeData(f), sourceNode, true);
             var subDestNode = new NodeModel(new NodeData(destNode.data.Filespec + subDir), destNode, true) { LinkedNode = subSourceNode };
+            if (!preview)
+            {
+              Directory.CreateDirectory(subDestNode.data.Filespec);
+            }
             subSourceNode.LinkedNode = subDestNode;
-            ProcessDirectory(subSourceNode, subDestNode, recursive, archive, daysToArchive, ct);
+            ProcessDirectory(preview, subSourceNode, subDestNode, recursive, archive, daysToArchive, ct);
             sourceNode.data.TotalDirectories++;
             Dispatcher.BeginInvoke((Action)(() =>
             {
@@ -693,9 +954,39 @@ namespace FileManager
               subDestNode.data.Name = destfileinfo.Name;
               subDestNode.data.TotalData = destfileinfo.Length;
               if (archive && (DateTime.Now - sourcefileinfo.LastWriteTimeUtc).TotalDays > daysToArchive)
-              { // archive copies to destination and removes the original (regardless of delete original option) if the last write time is older than the days specified
+              {
+                // archive copies to destination and removes the original (regardless of delete original option) if the last write time is older than the days specified
                 subSourceNode.UpdateMethod = AvailableUpdateMethods.Delete;
-                subDestNode.UpdateMethod = AvailableUpdateMethods.ToArchive;
+                if (preview)
+                {
+                  subDestNode.UpdateMethod = AvailableUpdateMethods.ToArchive;
+                }
+                else
+                {
+                  if (sourcefileinfo.LastWriteTimeUtc > destfileinfo.LastWriteTimeUtc)
+                  {
+                    // file not up to date, copy original
+                    try
+                    {
+                      File.Copy(sourcefileinfo.FullName, destfileinfo.FullName, true);
+                      subDestNode.UpdateMethod = AvailableUpdateMethods.UpToDate;
+
+                    }
+                    catch (Exception)
+                    {
+                      subDestNode.UpdateMethod = subSourceNode.UpdateMethod = AvailableUpdateMethods.Delete;
+                    }
+                  }
+                  try
+                  {
+                    File.Delete(sourcefileinfo.FullName);
+                    subDestNode.UpdateMethod = AvailableUpdateMethods.UpToDate;
+                  }
+                  catch (Exception)
+                  {
+                    subDestNode.UpdateMethod = subSourceNode.UpdateMethod = AvailableUpdateMethods.Delete;
+                  }
+                }
               }
               else if (sourcefileinfo.LastWriteTimeUtc == destfileinfo.LastWriteTimeUtc)
               {
@@ -703,25 +994,61 @@ namespace FileManager
               }
               else if (sourcefileinfo.LastWriteTimeUtc > destfileinfo.LastWriteTimeUtc)
               {
-                subDestNode.UpdateMethod = subSourceNode.UpdateMethod = AvailableUpdateMethods.ToDestination;
+                if (preview)
+                {
+                  subDestNode.UpdateMethod = subSourceNode.UpdateMethod = AvailableUpdateMethods.ToDestination;
+                }
+                else
+                {
+                  try
+                  {
+                    File.Copy(sourcefileinfo.FullName, destfileinfo.FullName, true);
+                    subDestNode.UpdateMethod = subSourceNode.UpdateMethod = AvailableUpdateMethods.UpToDate;
+                  }
+                  catch (Exception)
+                  {
+                    subDestNode.UpdateMethod = subSourceNode.UpdateMethod = AvailableUpdateMethods.Delete;
+                  }
+                }
               }
               else if (sourcefileinfo.LastWriteTimeUtc < destfileinfo.LastWriteTimeUtc)
               {
-                subDestNode.UpdateMethod = subSourceNode.UpdateMethod = AvailableUpdateMethods.ToSource;
+                if (preview)
+                {
+                  subDestNode.UpdateMethod = subSourceNode.UpdateMethod = AvailableUpdateMethods.ToSource;
+                }
+                else
+                {
+                }
               }
 
             }
             else
             {
               // destination file does not exist
-              subDestNode = new NodeModel(new NodeData(Path.GetFileName(destFilespec)), destNode, false) { LinkedNode = subSourceNode };
+              subDestNode = new NodeModel(new NodeData(destFilespec), destNode, false) { LinkedNode = subSourceNode };
               subSourceNode.LinkedNode = subDestNode;
-              subDestNode.data.Created = DateTime.Now;
-              subDestNode.data.Filespec = destFilespec;
-              subDestNode.data.LastModified = DateTime.Now;
-              subDestNode.data.Name = Path.GetFileName(destFilespec);
-              subSourceNode.UpdateMethod = AvailableUpdateMethods.ToDestination;
-              subDestNode.UpdateMethod = AvailableUpdateMethods.Add;
+              //subDestNode.data.Filespec = destFilespec;
+              if (preview)
+              {
+                subDestNode.data.Created = DateTime.Now;
+                subDestNode.data.LastModified = DateTime.Now;
+                subDestNode.data.Name = Path.GetFileName(destFilespec);
+                subSourceNode.UpdateMethod = AvailableUpdateMethods.ToDestination;
+                subDestNode.UpdateMethod = AvailableUpdateMethods.Add;
+              }
+              else
+              {
+                try
+                {
+                  File.Copy(sourcefileinfo.FullName, destFilespec);
+                  subDestNode.UpdateMethod = subSourceNode.UpdateMethod = AvailableUpdateMethods.UpToDate;
+                }
+                catch (Exception)
+                {
+                  subDestNode.UpdateMethod = subSourceNode.UpdateMethod = AvailableUpdateMethods.Delete;
+                }
+              }
             }
             Dispatcher.BeginInvoke((Action)(() =>
             {
@@ -743,7 +1070,7 @@ namespace FileManager
             //throw;
           }
         }
-        if (Directory.Exists( destNode.data.Filespec))
+        if (Directory.Exists(destNode.data.Filespec))
         {
           // iterate through the destination folder to find existing files only in destination folder
 
@@ -764,7 +1091,7 @@ namespace FileManager
             {
               var subSourceNode = new NodeModel(new NodeData(sourceNode.data.Filespec + subDir), sourceNode, false) { UpdateMethod = AvailableUpdateMethods.Disregard };
               var destFileInfo = new FileInfo(destfile);
-              var subDestNode = new NodeModel(new NodeData(destfile), destNode, false) { LinkedNode = subSourceNode, UpdateMethod = AvailableUpdateMethods.Question};
+              var subDestNode = new NodeModel(new NodeData(destfile), destNode, false) { LinkedNode = subSourceNode, UpdateMethod = AvailableUpdateMethods.Question };
               subDestNode.data.TotalData = destFileInfo.Length;
               subDestNode.data.Created = destFileInfo.CreationTime;
               subDestNode.data.LastModified = destFileInfo.LastWriteTime;
@@ -795,71 +1122,90 @@ namespace FileManager
         RecursiveSetParentIcon(item.Parent, method);
       }
     }
-    private void tree_ScrollChanged(object sender, ScrollChangedEventArgs e)
+    private async Task ProcessAsync(bool preview)
     {
-      //if (treeSource.Template.FindName("_tv_scrollviewer_", treeSource) == (ScrollViewer)sender)
-      //{
-      //  ((ScrollViewer)treeDest.Template.FindName("_tv_scrollviewer_", treeDest));
-      //}
-      //else
-      //{
-      //  ((ScrollViewer)treeSource.Template.FindName("_tv_scrollviewer_", treeSource)).ScrollToVerticalOffset(e.VerticalOffset);
-      //}
-      if (sender as System.Windows.Controls.TreeView == treeSource)
+      try
       {
-        ((ScrollViewer)VisualTreeHelper.GetChild(VisualTreeHelper.GetChild(treeDest, 0), 0)).ScrollToVerticalOffset(e.VerticalOffset);
+        if (!ToggleProcessing()) { return; }
+        string s = txtSource.Text;
+        if (Directory.Exists(s))
+        {
+          cts = new CancellationTokenSource();
+          CancellationToken token = cts.Token;
+          _ = Process(preview, s, txtDestination.Text, Nodes, Recursive, chkArchive.IsChecked == true, int.TryParse(txtArchiveDays.Text, out int i) ? i : settings.Default.LastArchiveDays, token);
+          await Task.Factory.StartNew(() =>
+          {
+            while (processingThread != null)
+            {
+              if (token.IsCancellationRequested)
+              {
+                processingThread.Abort();
+                processingThread = null;
+                cts = null;
+                AbortProcessing();
+                return;
+              }
+            }
+          });
+          CompleteProcessing();
+        }
+      }
+      catch (Exception ex)
+      {
+        UpdateStatus(ex.Message);
+      }
+    }
+    async Task<string> Process(bool preview, string sourceDirectory, string destDirectory, EvalData nodebase, bool recursive, bool archive, int daysToArchive, CancellationToken ct)
+    {
+      var tcs = new TaskCompletionSource<string>();
+      if (!string.IsNullOrEmpty(sourceDirectory) && !string.IsNullOrEmpty(destDirectory) && nodebase != null && !destDirectory.StartsWith(sourceDirectory) && !sourceDirectory.StartsWith(destDirectory))
+      {
+        sourceDirectory = sourceDirectory.TrimEnd('\\') + "\\";
+        destDirectory = destDirectory.TrimEnd('\\') + "\\";
+        try
+        {
+          Dispatcher.Invoke(() =>
+          {
+            nodebase.Clear();
+          });
+          NodeModel sourceNode = new NodeModel(new NodeData(sourceDirectory), null, true);
+          NodeModel destNode = new NodeModel(new NodeData(destDirectory), null, true) { LinkedNode = sourceNode };
+          sourceNode.LinkedNode = destNode;
+          await Task.Factory.StartNew(() =>
+          {
+            processingThread = Thread.CurrentThread;
+            try
+            {
+              Dispatcher.BeginInvoke((Action)(() =>
+              {
+                nodebase.SourceNodes.Add(sourceNode);
+                nodebase.DestNodes.Add(destNode);
+              }));
+              ProcessDirectory(preview, sourceNode, destNode, recursive, archive, daysToArchive, ct);
+
+            }
+            catch (Exception)
+            {
+              throw;
+            }
+          });
+        }
+        catch (Exception ex)
+        {
+          processingThread = null;
+          cts = null;
+          tcs.SetResult("Error : " + ex.Message);
+          return tcs.Task.Result;
+        }
       }
       else
       {
-        ((ScrollViewer)VisualTreeHelper.GetChild(VisualTreeHelper.GetChild(treeSource, 0), 0)).ScrollToVerticalOffset(e.VerticalOffset);
+        UpdateStatus("Unable to process folders as source cannot contain destination and vice versa.");
       }
-    }
-
-    private void TreeViewItem_Expanded(object sender, RoutedEventArgs e)
-    {
-      (((NodeModel)(((TreeViewItem)e.OriginalSource).DataContext)).LinkedNode).IsExpanded = true;
-    }
-
-    private void TreeViewItem_Collapsed(object sender, RoutedEventArgs e)
-    {
-      (((NodeModel)(((TreeViewItem)e.OriginalSource).DataContext)).LinkedNode).IsExpanded = false;
-    }
-
-    private void treeViewItem_Selected(object sender, RoutedEventArgs e)
-    {
-      (((NodeModel)(((TreeViewItem)e.OriginalSource).DataContext)).LinkedNode).IsSelected = true;
-    }
-
-    private void TxtSource_TextChanged(object sender, TextChangedEventArgs e)
-    {
-      Nodes.Clear();
-    }
-
-    private void TxtDestination_TextChanged(object sender, TextChangedEventArgs e)
-    {
-      Nodes.Clear();
-    }
-
-    private void TxtLog_TextChanged(object sender, TextChangedEventArgs e)
-    {
-
-    }
-
-    private void BtnFlipDirectory_Click(object sender, RoutedEventArgs e)
-    {
-      var source = txtSource.Text;
-      txtSource.Text = txtDestination.Text;
-      txtDestination.Text = source;
-    }
-
-    private void TreeSource_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
-    {
-      SelectedSourceNode = e.NewValue as NodeModel;
-    }
-
-    private void TreeDest_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
-    {
-      SelectedDestNode = e.NewValue as NodeModel;
+      processingThread = null;
+      cts = null;
+      tcs.SetResult("Complete");
+      return tcs.Task.Result;
     }
   }
 }

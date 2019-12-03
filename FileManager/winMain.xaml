@@ -7,7 +7,7 @@
         xmlns:properties="clr-namespace:FileManager.Properties"
         xmlns:io="clr-namespace:System.IO;assembly=mscorlib"
         mc:Ignorable="d"
-        Title="File Manager" Height="547" Width="472" BorderThickness="2" ResizeMode="CanResizeWithGrip" Icon="include/folderEmpty.ico" Background="#FF464646" Foreground="White" FontFamily="Arial" FontSize="14" WindowStyle="None" Initialized="Window_Initialized" Loaded="Window_Loaded" Closing="Window_Closing" >
+        Title="File Manager" Height="547" Width="472" BorderThickness="2" ResizeMode="CanResizeWithGrip" Icon="include/folderEmpty.ico" Background="#FF464646" Foreground="White" FontFamily="Arial" FontSize="14" WindowStyle="None" UseLayoutRounding="True" Initialized="Window_Initialized" Loaded="Window_Loaded" Closing="Window_Closing" >
   <Window.Resources>
     <BooleanToVisibilityConverter x:Key="VisibleIfTrueConverter" />
 
@@ -131,12 +131,8 @@
         </StatusBarItem>
         <Separator Grid.Column="1" />
         <StatusBarItem Grid.Column="2" HorizontalContentAlignment="Right">
-          <TextBlock x:Name="txtFileCount" Text="{Binding TotalCount, StringFormat='{}{0:#,0}'}"/>
+          <TextBlock x:Name="txtFileCount" Text="{Binding TotalCount, StringFormat='{}{0:#,0} files'}"/>
         </StatusBarItem>
-        <!--<Separator Grid.Column="3" />
-        <StatusBarItem Grid.Column="4" HorizontalContentAlignment="Right">
-          <TextBlock x:Name="txtA" Text="{Binding SelectedSourceNode.Name}"/>
-        </StatusBarItem>-->
         <Separator Grid.Column="5" />
         <StatusBarItem Grid.Column="6" VerticalContentAlignment="Stretch" HorizontalContentAlignment="Stretch">
           <Grid>
@@ -314,7 +310,7 @@
                 <StackPanel Orientation="Horizontal">
                   <Grid Width="16" Height="16" Margin="0,0,5,0" >
                     <Image Source="{Binding Image}" />
-                    <Image Source="{Binding ImageOverlay}"/>
+                    <Image Source="{Binding ImageOverlay}" />
                   </Grid>
                   <TextBlock Text="{Binding Name}"/>
                 </StackPanel>
