@@ -259,6 +259,7 @@ namespace FileManager
   }
   public partial class winMain : Window, INotifyPropertyChanged
   {
+    bool silent = false;
     System.Threading.Timer clrHeader;
     System.Threading.Timer SourceChanging;
     static Thread processingThread = null;
@@ -296,6 +297,43 @@ namespace FileManager
     public int TotalCount { get => _totalCount; set => SetField(ref _totalCount, value); }
     public winMain()
     {
+      //bool recursive = false;
+      //bool archive = false;
+      var S = settings.Default;
+      foreach (var s in Environment.GetCommandLineArgs())
+      {
+        //Console.WriteLine(s);
+        var arg = s.ToLower().TrimStart('/');
+        if (arg == "z") { silent = true; }
+        else if (arg == "r") { S.LastRecursive = true; }
+        else if (arg == "no-r") { S.LastRecursive = false; }
+        else if (arg == "del") { S.LastDeleteOriginal = true; }
+        else if (arg == "no-del") { S.LastDeleteOriginal = false; }
+        else if (arg == "a") { S.LastArchive = true; }
+        else if (arg == "no-a") { S.LastArchive = false; }
+        //else if (arg == "d") { S.LastArchiveDays = int.TryParse(arg, out int i) ? i : -1; }
+        else if (arg.StartsWith("i"))
+        {
+          var start = arg.IndexOf("=");
+          if (start > 0) { S.LastArchiveDays = int.TryParse(arg.Substring(start + 1, arg.Length - start - 1), out int i) ? i : -1; }
+        }
+        else if (arg.StartsWith("p1") || arg.StartsWith("s") || arg.StartsWith("source"))
+        {
+          var start = arg.IndexOf("=");
+          if (start > 0) { S.LastSource = arg.Substring(start + 1, arg.Length - start - 1); }
+        }
+        else if (arg.StartsWith("p2") || arg.StartsWith("d") || arg.StartsWith("dest") || arg.StartsWith("destination"))
+        {
+          var start = arg.IndexOf("=");
+          if (start > 0) { S.LastDestination = arg.Substring(start + 1, arg.Length - start - 1); }
+        }
+        else if (arg.StartsWith("p3") || arg.StartsWith("l") || arg.StartsWith("log"))
+        {
+          var start = arg.IndexOf("=");
+          if (start > 0) { S.LastLogFile = arg.Substring(start + 1, arg.Length - start - 1); }
+        }
+      }
+
       try
       {
         InitializeComponent();
@@ -402,6 +440,17 @@ namespace FileManager
     }
     private void Window_Initialized(object sender, EventArgs e)
     {
+      //UpdateStatus(string.Join("-", Environment.GetCommandLineArgs()));
+      if (silent)
+      { // silent run, don't show form
+        var t = ProcessAsync(false);
+        t.Wait();// S.CopyFilesAsync(S.LastSource, S.LastDestination);
+        this.Close();
+        return;
+      }
+
+
+
       txtVersion.Text = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString();
       ClearStatus();
       ApplySettings();
@@ -511,8 +560,11 @@ namespace FileManager
                 TotalCount = 0;
               }
             });
-            SourceChanging.Dispose();
-            SourceChanging = null;
+            if (SourceChanging != null)
+            {
+              SourceChanging.Dispose();
+              SourceChanging = null;
+            }
           }
           catch (Exception)
           {
@@ -868,7 +920,7 @@ namespace FileManager
     //    throw;
     //  }
     //}
-    private void ProcessDirectory(bool preview, NodeModel sourceNode, NodeModel destNode, bool recursive, bool archive, int daysToArchive, CancellationToken ct)
+    private void ProcessDirectory(bool preview, NodeModel sourceNode, NodeModel destNode, bool recursive, bool archive, int daysToArchive, CancellationToken ct, StreamWriter sw)
     {
       if (processingThread == null || sourceNode == null) { return; }
       string filespec = sourceNode.data.Filespec;
@@ -890,10 +942,18 @@ namespace FileManager
             var subDestNode = new NodeModel(new NodeData(destNode.data.Filespec + subDir), destNode, true) { LinkedNode = subSourceNode };
             if (!preview)
             {
-              Directory.CreateDirectory(subDestNode.data.Filespec);
+              try
+              {
+                Directory.CreateDirectory(subDestNode.data.Filespec);
+                if (sw != null) { sw.WriteLine("{0} | eval: {1}", DateTime.Now.ToString("yyyy.MM.dd hh:mm:ss tt"), subDestNode.data.Filespec); }
+              }
+              catch (Exception)
+              {
+                if (sw != null) { sw.WriteLine("{0} | FAIL eval: {1}", DateTime.Now.ToString("yyyy.MM.dd hh:mm:ss tt"), subDestNode.data.Filespec); }
+              }
             }
             subSourceNode.LinkedNode = subDestNode;
-            ProcessDirectory(preview, subSourceNode, subDestNode, recursive, archive, daysToArchive, ct);
+            ProcessDirectory(preview, subSourceNode, subDestNode, recursive, archive, daysToArchive, ct, sw);
             sourceNode.data.TotalDirectories++;
             Dispatcher.BeginInvoke((Action)(() =>
             {
@@ -970,21 +1030,28 @@ namespace FileManager
                     {
                       File.Copy(sourcefileinfo.FullName, destfileinfo.FullName, true);
                       subDestNode.UpdateMethod = AvailableUpdateMethods.UpToDate;
-
+                      if (sw != null) { sw.WriteLine("{0} | copy: {1}\t=>\t{2}", DateTime.Now.ToString("yyyy.MM.dd hh:mm:ss tt"), sourcefileinfo.FullName, destfileinfo.FullName); }
                     }
                     catch (Exception)
                     {
                       subDestNode.UpdateMethod = subSourceNode.UpdateMethod = AvailableUpdateMethods.Delete;
-                    }
+                      RecursiveSetParentIcon(subSourceNode, AvailableUpdateMethods.Delete);
+                      RecursiveSetParentIcon(subDestNode, AvailableUpdateMethods.Delete);
+                      if (sw != null) { sw.WriteLine("{0} | FAIL copy: {1}\t=>\t{2}", DateTime.Now.ToString("yyyy.MM.dd hh:mm:ss tt"), sourcefileinfo.FullName, destfileinfo.FullName); }
+                   }
                   }
                   try
                   {
                     File.Delete(sourcefileinfo.FullName);
                     subDestNode.UpdateMethod = AvailableUpdateMethods.UpToDate;
+                    if (sw != null) { sw.WriteLine("{0} | delete: {1}", DateTime.Now.ToString("yyyy.MM.dd hh:mm:ss tt"), sourcefileinfo.FullName); }
                   }
                   catch (Exception)
                   {
                     subDestNode.UpdateMethod = subSourceNode.UpdateMethod = AvailableUpdateMethods.Delete;
+                    RecursiveSetParentIcon(subSourceNode, AvailableUpdateMethods.Delete);
+                    RecursiveSetParentIcon(subDestNode, AvailableUpdateMethods.Delete);
+                    if (sw != null) { sw.WriteLine("{0} | FAIL delete: {1}", DateTime.Now.ToString("yyyy.MM.dd hh:mm:ss tt"), sourcefileinfo.FullName); }
                   }
                 }
               }
@@ -1004,10 +1071,14 @@ namespace FileManager
                   {
                     File.Copy(sourcefileinfo.FullName, destfileinfo.FullName, true);
                     subDestNode.UpdateMethod = subSourceNode.UpdateMethod = AvailableUpdateMethods.UpToDate;
+                    if (sw != null) { sw.WriteLine("{0} | copy: {1}\t=>\t{2}", DateTime.Now.ToString("yyyy.MM.dd hh:mm:ss tt"), sourcefileinfo.FullName, destfileinfo.FullName); }
                   }
                   catch (Exception)
                   {
                     subDestNode.UpdateMethod = subSourceNode.UpdateMethod = AvailableUpdateMethods.Delete;
+                    RecursiveSetParentIcon(subSourceNode, AvailableUpdateMethods.Delete);
+                    RecursiveSetParentIcon(subDestNode, AvailableUpdateMethods.Delete);
+                    if (sw != null) { sw.WriteLine("{0} | FAIL copy: {1}\t=>\t{2}", DateTime.Now.ToString("yyyy.MM.dd hh:mm:ss tt"), sourcefileinfo.FullName, destfileinfo.FullName); }
                   }
                 }
               }
@@ -1021,7 +1092,6 @@ namespace FileManager
                 {
                 }
               }
-
             }
             else
             {
@@ -1043,10 +1113,14 @@ namespace FileManager
                 {
                   File.Copy(sourcefileinfo.FullName, destFilespec);
                   subDestNode.UpdateMethod = subSourceNode.UpdateMethod = AvailableUpdateMethods.UpToDate;
+                  if (sw != null) { sw.WriteLine("{0} | copy: {1}\t=>\t{2}", DateTime.Now.ToString("yyyy.MM.dd hh:mm:ss tt"), sourcefileinfo.FullName, destFilespec); }
                 }
                 catch (Exception)
                 {
                   subDestNode.UpdateMethod = subSourceNode.UpdateMethod = AvailableUpdateMethods.Delete;
+                  RecursiveSetParentIcon(subSourceNode, AvailableUpdateMethods.Delete);
+                  RecursiveSetParentIcon(subDestNode, AvailableUpdateMethods.Delete);
+                  if (sw != null) { sw.WriteLine("{0} | FAIL copy: {1}\t=>\t{2}", DateTime.Now.ToString("yyyy.MM.dd hh:mm:ss tt"), sourcefileinfo.FullName, destFilespec); }
                 }
               }
             }
@@ -1132,7 +1206,7 @@ namespace FileManager
         {
           cts = new CancellationTokenSource();
           CancellationToken token = cts.Token;
-          _ = Process(preview, s, txtDestination.Text, Nodes, Recursive, chkArchive.IsChecked == true, int.TryParse(txtArchiveDays.Text, out int i) ? i : settings.Default.LastArchiveDays, token);
+          _ = Process(preview, s, txtDestination.Text, txtLog.Text, Nodes, Recursive, chkArchive.IsChecked == true, int.TryParse(txtArchiveDays.Text, out int i) ? i : settings.Default.LastArchiveDays, token);
           await Task.Factory.StartNew(() =>
           {
             while (processingThread != null)
@@ -1155,7 +1229,7 @@ namespace FileManager
         UpdateStatus(ex.Message);
       }
     }
-    async Task<string> Process(bool preview, string sourceDirectory, string destDirectory, EvalData nodebase, bool recursive, bool archive, int daysToArchive, CancellationToken ct)
+    private async Task<string> Process(bool preview, string sourceDirectory, string destDirectory, string logDirectory, EvalData nodebase, bool recursive, bool archive, int daysToArchive, CancellationToken ct)
     {
       var tcs = new TaskCompletionSource<string>();
       if (!string.IsNullOrEmpty(sourceDirectory) && !string.IsNullOrEmpty(destDirectory) && nodebase != null && !destDirectory.StartsWith(sourceDirectory) && !sourceDirectory.StartsWith(destDirectory))
@@ -1181,8 +1255,17 @@ namespace FileManager
                 nodebase.SourceNodes.Add(sourceNode);
                 nodebase.DestNodes.Add(destNode);
               }));
-              ProcessDirectory(preview, sourceNode, destNode, recursive, archive, daysToArchive, ct);
-
+              try
+              {
+                using (StreamWriter sw = new StreamWriter(logDirectory))
+                {
+                  ProcessDirectory(preview, sourceNode, destNode, recursive, archive, daysToArchive, ct, sw);
+                }
+              }
+              catch (Exception)
+              {
+                ProcessDirectory(preview, sourceNode, destNode, recursive, archive, daysToArchive, ct, null);
+              }
             }
             catch (Exception)
             {

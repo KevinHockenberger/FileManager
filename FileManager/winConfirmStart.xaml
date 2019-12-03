@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:FileManager"
         mc:Ignorable="d"
-        Title="winConfirmStart" Height="208" Width="511.259" BorderThickness="2" ResizeMode="CanResizeWithGrip" Icon="include/folderEmpty.ico" Background="#FF464646" Foreground="White" FontFamily="Arial" FontSize="14" WindowStyle="None" WindowStartupLocation="CenterOwner">
+        Title="winConfirmStart" Height="208" Width="511.259" BorderThickness="2" ResizeMode="CanResizeWithGrip" Icon="include/folderEmpty.ico" Background="#FF464646" Foreground="White" FontFamily="Arial" FontSize="14" WindowStyle="None" WindowStartupLocation="CenterOwner" UseLayoutRounding="True">
   <DockPanel>
     <Border DockPanel.Dock="Top" BorderBrush="Black" BorderThickness="0,0,0,1" MouseDown="_MouseDown">
       <Grid>
