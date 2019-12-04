@@ -177,7 +177,7 @@
           <CheckBox x:Name="chkRecursive" Content="recursive" Margin="10,0" VerticalAlignment="Bottom" IsChecked="{Binding Source={x:Static properties:Settings.Default},
                                Path=LastRecursive}" ToolTip="Search subfolders also."/>
           <CheckBox x:Name="chkDeleteOriginal" Content="delete source" Margin="10,0" VerticalAlignment="Bottom" IsChecked="{Binding Source={x:Static properties:Settings.Default},
-                               Path=LastDeleteOriginal}" ToolTip="Copy files to destination and always remove the source files."/>
+                               Path=LastDeleteOriginal}" ToolTip="Copy files to destination and always remove the source files. (not yet available)"/>
           <StackPanel Orientation="Horizontal" Margin="10,0">
             <CheckBox x:Name="chkArchive" Content="archive after" VerticalAlignment="Bottom" IsChecked="{Binding Source={x:Static properties:Settings.Default},
                                Path=LastArchive}" ToolTip="Remove the source file if its last modified date is older than the specified number of days."/>
