@@ -1,0 +1,91 @@
+﻿<Window x:Class="FileManager.winMore"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:FileManager"
+        mc:Ignorable="d"
+        Title="winMore"  Height="581.55" Width="633.334" BorderThickness="2" ResizeMode="CanResizeWithGrip" Icon="include/folderEmpty.ico" Background="#FF464646" Foreground="White" FontFamily="Arial" FontSize="14" WindowStyle="None" WindowStartupLocation="CenterOwner" UseLayoutRounding="True">
+  <Window.Resources>
+    <Style TargetType="{x:Type TextBlock}">
+      <!--<Setter Property="Margin" Value="5"/>-->
+      <Setter Property="TextWrapping" Value="Wrap"/>
+    </Style>
+    <Style TargetType="{x:Type StackPanel}">
+      <Setter Property="Orientation" Value="Vertical"/>
+      <Setter Property="Margin" Value="5"/>
+    </Style>
+  </Window.Resources>
+    <DockPanel>
+    <Border DockPanel.Dock="Top" BorderBrush="Black" BorderThickness="0,0,0,1" MouseDown="_MouseDown">
+      <Grid>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="Auto"/>
+          <ColumnDefinition/>
+          <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+        <Image Source="include\folderEmpty.ico" Width="18" Height="18" Margin="5,0"/>
+        <Border Grid.Column="1">
+          <TextBlock x:Name="txtTitle" Text="More information" Margin="5,0" VerticalAlignment="Center" Foreground="White"/>
+        </Border>
+        <Button x:Name="btnClose" Width="24" Height="24" Grid.Column="6" BorderThickness="1" VerticalAlignment="Top" Click="BtnClose_Click" Background="Transparent" BorderBrush="#FF686868">
+          <Image Source="include\x-neon.png" Width="18" Height="18"/>
+        </Button>
+      </Grid>
+    </Border>
+    <ScrollViewer VerticalScrollBarVisibility="Auto" >
+      <Border DockPanel.Dock="Bottom">
+        <StackPanel>
+          <StackPanel>
+            <TextBlock>Command line options:</TextBlock>
+            <TextBlock FontSize="12" FontStyle="Italic" >(If none of the following options are used, the application will attempt to run with the last used settings.)</TextBlock>
+          </StackPanel>
+          <StackPanel>
+            <TextBlock FontWeight="Bold" FontSize="16" Foreground="#FFFFF97A">z</TextBlock>
+            <TextBlock FontSize="12" FontStyle="Italic">Silent mode. Will copy from source to destination without showing form. Log will be written to evaluate results.</TextBlock>
+          </StackPanel>
+          <StackPanel>
+            <TextBlock FontWeight="Bold" FontSize="16" Foreground="#FFFFF97A">r</TextBlock>
+            <TextBlock FontSize="12" FontStyle="Italic">Recursive. Checks this option which will evaluate sub-folders.</TextBlock>
+          </StackPanel>
+          <StackPanel>
+            <TextBlock FontWeight="Bold" FontSize="16" Foreground="#FFFFF97A">no-r</TextBlock>
+            <TextBlock FontSize="12" FontStyle="Italic">Not recursive. Unchecks this option which limits copy to source folder only.</TextBlock>
+          </StackPanel>
+          <StackPanel>
+            <TextBlock FontWeight="Bold" FontSize="16" Foreground="#FFFFF97A">del</TextBlock>
+            <TextBlock FontSize="12" FontStyle="Italic">Delete original files. Checks this option which will remove the source files and folders. (not available yet)</TextBlock>
+          </StackPanel>
+          <StackPanel>
+            <TextBlock FontWeight="Bold" FontSize="16" Foreground="#FFFFF97A">no-del</TextBlock>
+            <TextBlock FontSize="12" FontStyle="Italic">Do not delete original files. Unchecks this option which leaves source files alone. (not available yet)</TextBlock>
+          </StackPanel>
+          <StackPanel>
+            <TextBlock FontWeight="Bold" FontSize="16" Foreground="#FFFFF97A">a</TextBlock>
+            <TextBlock FontSize="12" FontStyle="Italic">Archive. Checks this option which will remove the source files if they are older than the archive interval.</TextBlock>
+          </StackPanel>
+          <StackPanel>
+            <TextBlock FontWeight="Bold" FontSize="16" Foreground="#FFFFF97A">no-a</TextBlock>
+            <TextBlock FontSize="12" FontStyle="Italic">No archive. Unchecks this option which leaves source files alone.</TextBlock>
+          </StackPanel>
+          <StackPanel>
+            <TextBlock FontWeight="Bold" FontSize="16" Foreground="#FFFFF97A">i=n</TextBlock>
+            <TextBlock FontSize="12" FontStyle="Italic">Sets archive interval where n = number of days.</TextBlock>
+          </StackPanel>
+          <StackPanel>
+            <TextBlock FontWeight="Bold" FontSize="16" Foreground="#FFFFF97A">{p1, s, source}=f</TextBlock>
+            <TextBlock FontSize="12" FontStyle="Italic">Sets the source folder where f = path. Quote the path if it contains spaces.</TextBlock>
+          </StackPanel>
+          <StackPanel>
+            <TextBlock FontWeight="Bold" FontSize="16" Foreground="#FFFFF97A">{p2, d, dest, destination}=f</TextBlock>
+            <TextBlock FontSize="12" FontStyle="Italic">Sets the destination folder where f = path. Quote the path if it contains spaces.</TextBlock>
+          </StackPanel>
+          <StackPanel>
+            <TextBlock FontWeight="Bold" FontSize="16" Foreground="#FFFFF97A">{p3, l, log}=f</TextBlock>
+            <TextBlock FontSize="12" FontStyle="Italic">Sets the log folder where f = path. Quote the path if it contains spaces.</TextBlock>
+          </StackPanel>
+        </StackPanel>
+      </Border>
+    </ScrollViewer>
+  </DockPanel>
+</Window>

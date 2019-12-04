@@ -497,7 +497,8 @@ namespace FileManager
     }
     private void BtnMore_Click(object sender, RoutedEventArgs e)
     {
-      TotalFolders++;
+      winMore d = new winMore() { Owner = this };
+      d.ShowDialog();
     }
     private void BtnPreview_Click(object sender, RoutedEventArgs e)
     {
