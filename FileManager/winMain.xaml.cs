@@ -333,7 +333,12 @@ namespace FileManager
           if (start > 0) { S.LastLogFile = arg.Substring(start + 1, arg.Length - start - 1); }
         }
       }
-
+      if (silent)
+      { // silent run, don't show form
+        ProcessSilent(settings.Default.LastSource, settings.Default.LastDestination, settings.Default.LastLogFile, settings.Default.LastRecursive, settings.Default.LastArchive, settings.Default.LastArchiveDays);
+        this.Close();
+        return;
+      }
       try
       {
         InitializeComponent();
@@ -416,10 +421,20 @@ namespace FileManager
         settings.Default.Save();
       }
       WindowState = settings.Default.LastWindowState;
-      Width = settings.Default.LastWindowRect.Width;
-      Height = settings.Default.LastWindowRect.Height;
-      Top = settings.Default.LastWindowRect.Top;
-      Left = settings.Default.LastWindowRect.Left;
+      if(settings.Default.LastWindowRect==Rect.Empty)
+      {
+        Width = 480;
+        Height = 550;
+        Top = 0;
+        Left = 0;
+      }
+      else
+      {
+        Width = settings.Default.LastWindowRect.Width;
+        Height = settings.Default.LastWindowRect.Height;
+        Top = settings.Default.LastWindowRect.Top;
+        Left = settings.Default.LastWindowRect.Left;
+      }
       //txtSource.Text = settings.Default.LastSource;
       //txtDestination.Text = settings.Default.LastDestination;
       //txtLog.Text = settings.Default.LastLogFile;
@@ -428,7 +443,7 @@ namespace FileManager
     private void SaveSettings()
     {
       settings.Default.LastWindowState = this.WindowState;
-      settings.Default.LastWindowRect = this.RestoreBounds;
+      settings.Default.LastWindowRect = this.RestoreBounds != Rect.Empty ? this.RestoreBounds : settings.Default.LastWindowRect;
       settings.Default.LastSource = txtSource.Text;
       settings.Default.LastDestination = txtDestination.Text;
       settings.Default.LastLogFile = txtLog.Text;
@@ -441,15 +456,6 @@ namespace FileManager
     private void Window_Initialized(object sender, EventArgs e)
     {
       //UpdateStatus(string.Join("-", Environment.GetCommandLineArgs()));
-      if (silent)
-      { // silent run, don't show form
-        var t = ProcessAsync(false);
-        t.Wait();// S.CopyFilesAsync(S.LastSource, S.LastDestination);
-        this.Close();
-        return;
-      }
-
-
 
       txtVersion.Text = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString();
       ClearStatus();
@@ -1038,7 +1044,7 @@ namespace FileManager
                       RecursiveSetParentIcon(subSourceNode, AvailableUpdateMethods.Delete);
                       RecursiveSetParentIcon(subDestNode, AvailableUpdateMethods.Delete);
                       if (sw != null) { sw.WriteLine("{0} | FAIL copy: {1}\t=>\t{2}", DateTime.Now.ToString("yyyy.MM.dd hh:mm:ss tt"), sourcefileinfo.FullName, destfileinfo.FullName); }
-                   }
+                    }
                   }
                   try
                   {
@@ -1289,6 +1295,154 @@ namespace FileManager
       cts = null;
       tcs.SetResult("Complete");
       return tcs.Task.Result;
+    }
+    private void ProcessSilent(string sourceDirectory, string destDirectory, string logDirectory, bool recursive, bool archive, int daysToArchive)
+    {
+      if (!string.IsNullOrEmpty(sourceDirectory) && !string.IsNullOrEmpty(destDirectory) && !destDirectory.StartsWith(sourceDirectory) && !sourceDirectory.StartsWith(destDirectory))
+      {
+        sourceDirectory = sourceDirectory.TrimEnd('\\') + "\\";
+        destDirectory = destDirectory.TrimEnd('\\') + "\\";
+        try
+        {
+          try
+          {
+            using (StreamWriter sw = new StreamWriter(logDirectory))
+            {
+              ProcessDirectorySilent(sourceDirectory, destDirectory, recursive, archive, daysToArchive, sw);
+            }
+          }
+          catch (Exception)
+          {
+            ProcessDirectorySilent(sourceDirectory, destDirectory, recursive, archive, daysToArchive, null);
+          }
+        }
+        catch (Exception)
+        {
+        }
+      }
+    }
+    private void ProcessDirectorySilent(string sourceDir, string destDir, bool recursive, bool archive, int daysToArchive, StreamWriter sw)
+    {
+      if (string.IsNullOrEmpty(sourceDir) || string.IsNullOrEmpty(destDir)) { return; }
+      string filespec = sourceDir;
+      int lenSourceBase = sourceDir.Length;
+      int lenDestBase = destDir.Length;
+      if (recursive)
+      {
+        try
+        {
+          foreach (var f in Directory.GetDirectories(sourceDir))
+          {
+            filespec = f;
+            var subDir = f.Substring(lenSourceBase);
+            var subSourceDir = f;
+            var subDestDir = destDir + subDir;
+            try
+            {
+              Directory.CreateDirectory(subDestDir);
+              if (sw != null) { sw.WriteLine("{0} | eval: {1}", DateTime.Now.ToString("yyyy.MM.dd hh:mm:ss tt"), subDestDir); }
+            }
+            catch (Exception)
+            {
+              if (sw != null) { sw.WriteLine("{0} | FAIL eval: {1}", DateTime.Now.ToString("yyyy.MM.dd hh:mm:ss tt"), subDestDir); }
+            }
+            ProcessDirectorySilent(subSourceDir, subDestDir, recursive, archive, daysToArchive, sw);
+          }
+        }
+        catch (UnauthorizedAccessException)
+        {
+        }
+        catch (Exception)
+        {
+        }
+      }
+      try
+      {
+        foreach (var f in Directory.GetFiles(sourceDir))
+        {
+          try
+          {
+            filespec = f;
+            var subDir = f.Substring(lenSourceBase);
+            var sourcefileinfo = new FileInfo(f);
+            var destFilespec = destDir + subDir;
+            if (File.Exists(destFilespec))
+            {
+              var destfileinfo = new FileInfo(destFilespec);
+              if (archive && (DateTime.Now - sourcefileinfo.LastWriteTimeUtc).TotalDays > daysToArchive)
+              {
+                // archive copies to destination and removes the original (regardless of delete original option) if the last write time is older than the days specified
+                if (sourcefileinfo.LastWriteTimeUtc > destfileinfo.LastWriteTimeUtc)
+                {
+                  // file not up to date, copy original
+                  try
+                  {
+                    File.Copy(sourcefileinfo.FullName, destfileinfo.FullName, true);
+                    if (sw != null) { sw.WriteLine("{0} | copy: {1}\t=>\t{2}", DateTime.Now.ToString("yyyy.MM.dd hh:mm:ss tt"), sourcefileinfo.FullName, destfileinfo.FullName); }
+                  }
+                  catch (Exception)
+                  {
+                    if (sw != null) { sw.WriteLine("{0} | FAIL copy: {1}\t=>\t{2}", DateTime.Now.ToString("yyyy.MM.dd hh:mm:ss tt"), sourcefileinfo.FullName, destfileinfo.FullName); }
+                  }
+                }
+                try
+                {
+                  File.Delete(sourcefileinfo.FullName);
+                  if (sw != null) { sw.WriteLine("{0} | delete: {1}", DateTime.Now.ToString("yyyy.MM.dd hh:mm:ss tt"), sourcefileinfo.FullName); }
+                }
+                catch (Exception)
+                {
+                  if (sw != null) { sw.WriteLine("{0} | FAIL delete: {1}", DateTime.Now.ToString("yyyy.MM.dd hh:mm:ss tt"), sourcefileinfo.FullName); }
+                }
+              }
+              else if (sourcefileinfo.LastWriteTimeUtc == destfileinfo.LastWriteTimeUtc)
+              {
+              }
+              else if (sourcefileinfo.LastWriteTimeUtc > destfileinfo.LastWriteTimeUtc)
+              {
+                try
+                {
+                  File.Copy(sourcefileinfo.FullName, destfileinfo.FullName, true);
+                  if (sw != null) { sw.WriteLine("{0} | copy: {1}\t=>\t{2}", DateTime.Now.ToString("yyyy.MM.dd hh:mm:ss tt"), sourcefileinfo.FullName, destfileinfo.FullName); }
+                }
+                catch (Exception)
+                {
+                  if (sw != null) { sw.WriteLine("{0} | FAIL copy: {1}\t=>\t{2}", DateTime.Now.ToString("yyyy.MM.dd hh:mm:ss tt"), sourcefileinfo.FullName, destfileinfo.FullName); }
+                }
+              }
+              else if (sourcefileinfo.LastWriteTimeUtc < destfileinfo.LastWriteTimeUtc)
+              {
+              }
+            }
+            else
+            {
+              // destination file does not exist
+              try
+              {
+                File.Copy(sourcefileinfo.FullName, destFilespec);
+                if (sw != null) { sw.WriteLine("{0} | copy: {1}\t=>\t{2}", DateTime.Now.ToString("yyyy.MM.dd hh:mm:ss tt"), sourcefileinfo.FullName, destFilespec); }
+              }
+              catch (Exception)
+              {
+                if (sw != null) { sw.WriteLine("{0} | FAIL copy: {1}\t=>\t{2}", DateTime.Now.ToString("yyyy.MM.dd hh:mm:ss tt"), sourcefileinfo.FullName, destFilespec); }
+              }
+            }
+
+          }
+          catch (UnauthorizedAccessException)
+          {
+          }
+          catch (Exception)
+          {
+          }
+        }
+      }
+      catch (UnauthorizedAccessException)
+      {
+      }
+      catch (Exception)
+      {
+      }
     }
   }
 }
